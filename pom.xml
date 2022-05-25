@@ -93,8 +93,8 @@
 	
 
 	<!-- install the plugin to ImageJ/FIJI: -->
-	<!-- <imagej.app.directory>D:\ImageJ\ImageJ</imagej.app.directory> -->
-	<!-- <scijava.app.directory>d:\FIJI\Fiji.app\</scijava.app.directory> -->
+	<imagej.app.directory>C:\Users\ab50\Documents\git\annotatorj\artifact\ImageJ</imagej.app.directory>
+	<scijava.app.directory>C:\Users\ab50\Documents\git\annotatorj\artifact\Fiji</scijava.app.directory>
 	
 	<!-- Modified for using SNAPSHOT versions -->
 	 <!-- 
@@ -130,10 +130,7 @@
             </snapshots>
         </repository>
     </repositories>
-	
-  
-  
-  
+
   <!-- DEPENDENCIES -->
   <dependencies>
     
