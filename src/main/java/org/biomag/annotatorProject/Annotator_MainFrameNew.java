@@ -59,6 +59,9 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 
+import java.util.zip.ZipFile;
+import java.util.zip.ZipEntry;
+import java.util.Enumeration;
 import java.util.ArrayList;
 import java.lang.Math;
 import java.util.stream.*;
@@ -209,6 +212,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
     private Roi origEditedROI;
     private float origStrokeWidth;
     private RoiManager editManager;
+    private int nextROILabel;
 
     // dl4j constants
     public final static String DYNAMIC_LOAD_CLASSPATH = "ND4J_DYNAMIC_LOAD_CLASSPATH";
@@ -862,6 +866,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         origEditedROI = null;
         origStrokeWidth = 0;
         editManager = null;
+        nextROILabel = 100;
 
         // set default contour assist vars
         trainedUNetModel = null;
@@ -3685,6 +3690,62 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 "Warning",
                 "No next image in current folder");
         return;
+    }
+    
+    public void saveROIs()
+    {
+        imp = WindowManager.getCurrentImage();
+        int nextSliceIdx = imp.getCurrentSlice();
+        String loadedROIfolder = destFolder + File.separator + "stardist_rois";
+        String loadedROIname = "klbOut_Cam_Long_00257.lux.label_" + String.valueOf(nextSliceIdx) + ".zip";
+        
+        
+        try{
+            ArrayList<String> prevLabels = new ArrayList<String>();
+            ArrayList<String> currLabels = new ArrayList<String>();
+            
+            // Load previous version of ROI zip and extract the labels 
+            ZipFile zipFile = new ZipFile(loadedROIfolder +File.separator + loadedROIname);
+            Enumeration zipEntries = zipFile.entries();
+            while (zipEntries.hasMoreElements()) {
+                String fname = ((ZipEntry)zipEntries.nextElement()).getName();
+                String labelIdx = fname.split("[.]")[0].split("_")[1];
+                prevLabels.add(labelIdx);
+            }
+            
+            //Save the current ROI as a temp file
+            String outputFileName = loadedROIfolder + File.separator + "test.zip";
+            manager.runCommand("Save", outputFileName);
+            
+            // Load current version of ROI zip and extract the labels 
+            zipFile = new ZipFile(outputFileName);
+            zipEntries = zipFile.entries();
+            while (zipEntries.hasMoreElements()) {
+                String fname = ((ZipEntry)zipEntries.nextElement()).getName();
+                String labelIdx = fname.split("[.]")[0].split("_")[1];
+                currLabels.add(labelIdx);
+            }
+            
+            //Delete the olf ROI zip and rename the new file 
+            File destFile = new File(loadedROIfolder +File.separator + loadedROIname);
+            File sourceFile = new File(outputFileName);
+            destFile.delete();
+            sourceFile.renameTo(destFile);
+            
+            for (String s : prevLabels) {
+                 if (!currLabels.contains(s)){
+                     IJ.log("Deleting ROI Label:" + s);
+                }
+            }
+        
+        }
+        catch(Exception e)
+        {
+            IJ.log("Cant load  Slice index: " +  String.valueOf(nextSliceIdx));
+        }
+        
+        
+
     }
 
     // -------------------
@@ -8634,7 +8695,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                     }
                 }
                 else{
-                    IJ.log("Adding selection automatically...");
+                    IJ.log("Renaming selection automatically...");
                     imp = WindowManager.getCurrentImage();
                     // add this roi to the list
                     if (imp == null) {
@@ -8645,8 +8706,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                     if (curROI == null) {
                         IJ.log("Empty ROI");
                     } else {
-                        int nextSliceIdx = imp.getCurrentSlice();
-                        String curROIname = String.valueOf(nextSliceIdx) + "_100";
+                        int sliceIdx = imp.getCurrentSlice();
+                        String curROIname = String.valueOf(sliceIdx) + "_" + String.valueOf(nextROILabel);
                         curROI.setName(curROIname);
                     }
                 }
@@ -9164,8 +9225,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 // open class name selector dialog box
                 // create dest folder with class name
                 // save the ROI.zip there
-
-                saveData();
+                saveROIs();
+                //saveData();
             } // LOAD --------------------------------
             else if (command.equals("Load")) {
                 // loads a previous annotation to the roi list
