@@ -3,3 +3,6 @@ mvn install:install-file -Dfile="lib\javabuilder.jar" -DgroupId=com.mathworks.to
 
 
 mvn install:install-file -Dfile="lib\runAC.jar" -DgroupId=com.mathworks -DartifactId=runAC -Dversion=1.0 -Dpackaging=jar
+
+
+mvn install:install-file -Dfile="lib\klb-0.3.6.jar" -DgroupId=org.janelia.simview -DartifactId=klb -Dversion=0.3.6 -Dpackaging=jar

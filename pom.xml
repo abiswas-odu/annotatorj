@@ -15,7 +15,7 @@
   <!-- ANNOTATORJ -->
   <groupId>org.biomag</groupId>
   <artifactId>annotator_Project</artifactId>
-  <version>0.0.3-SNAPSHOT</version>
+  <version>0.0.7a</version>
   <packaging>jar</packaging>
   
   <name>annotator_Project</name>
@@ -305,6 +305,24 @@
     	<type>jar</type>
     	<!-- <file></file> -->
     </dependency>
+<!--    <dependency>
+        <groupId>org.janelia.simview</groupId>
+        <artifactId>klb</artifactId>
+        <version>0.3.6</version>
+    	<type>jar</type>
+    </dependency>
+    <dependency>
+        <groupId>net.imagej</groupId>
+        <artifactId>imagej-common</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>net.imglib2</groupId>
+        <artifactId>imglib2</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.scif</groupId>
+        <artifactId>scifio</artifactId>
+    </dependency>-->
   </dependencies>
   
   

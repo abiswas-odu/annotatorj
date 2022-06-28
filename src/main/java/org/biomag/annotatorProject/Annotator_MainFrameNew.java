@@ -61,6 +61,8 @@ import javax.swing.DefaultListModel;
 
 import java.util.zip.ZipFile;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+import java.util.zip.ZipInputStream;
 import java.util.Enumeration;
 import java.util.ArrayList;
 import java.lang.Math;
@@ -93,13 +95,12 @@ import org.nd4j.linalg.api.ops.impl.image.ResizeNearestNeighbor;
 import org.datavec.image.transform.ColorConversionTransform;
 import static org.opencv.imgproc.Imgproc.COLOR_BGR2RGB;
 
-//import BrushToolCustom;
-//import ij.plugin.tool.BrushToolCustom;
 // for active contour
 import com.mathworks.toolbox.javabuilder.*;
-//import runSnake2D.*;
+import java.util.Objects;
+import org.apache.commons.lang3.math.NumberUtils;
 import runAC.*;
-import com.github.emersonmoretto.*;
+//import org.janelia.simview.klb.*;
 
 public class Annotator_MainFrameNew extends PlugInFrame implements ActionListener, ItemListener { //,KeyListener
 
@@ -3153,9 +3154,49 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             curPredictionImageName = defFile;
             curPredictionImage = null;
             curOrigImage = null;
+            
+            //Create a tif to load!
+            boolean isKLBFile = false;
+            String klbFileName = "";
+            if(destNameRaw.endsWith(".klb"))
+            {
+                try{
+                    String cmdFile = "";
+                    String os_str = System.getProperty("os.name");
+                    if(os_str.compareTo("Windows 10")==0)
+                        cmdFile = "cmd.exe /c klb2tif.bat " + destFolder + File.separator + destNameRaw;
+                    else
+                        cmdFile = "./klb2tif.sh " + destFolder + File.separator + destNameRaw;
+
+                    Process process;
+                    process = Runtime.getRuntime().exec(cmdFile);
+                    int exitVal = process.waitFor();
+                    if (exitVal == 0) {
+                        klbFileName = destNameRaw;
+                        destNameRaw = destNameRaw.substring(0,destNameRaw.lastIndexOf('.')) + ".tif";
+                    } else {
+                        System.out.println("Failed to convert KLB to TIF! Please switch to direct TIF input.");
+                        throw new IOException("Failed to convert KLB to TIF! Please switch to direct TIF input.");
+                    }
+                    isKLBFile = true;
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                } 
+                catch (InterruptedException e) {
+                    e.printStackTrace();
+                } 
+            }
             opener2.open(destFolder + File.separator + destNameRaw);
-            //destFolder=opener.getDir();
             IJ.log("Opened file: " + destNameRaw);
+            
+            if(isKLBFile){
+                File klbFile = new File(destFolder + File.separator + klbFileName);
+                File tifFile = new File(destFolder + File.separator + destNameRaw);
+                if(klbFile.exists() && tifFile.exists()){
+                    tifFile.deleteOnExit();
+                }
+            }
 
             // get a list of files in the current directory
             File folder = new File(destFolder);
@@ -3188,6 +3229,36 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                     curFileIdx = i;
                     break;
                 }
+            }
+            
+
+            try{
+                String loadedROIfolder = destFolder + File.separator + "stardist_rois";
+                File dir = new File(loadedROIfolder);
+                int maxROILabel = 0;
+                if(dir.exists()){
+                    File[] directoryListing = dir.listFiles();
+                    if (directoryListing != null) {
+                      for (File child : directoryListing) {
+                        ZipFile zipFile = new ZipFile(child.getAbsolutePath());
+                        Enumeration zipEntries = zipFile.entries();
+                        while (zipEntries.hasMoreElements()) {
+                            String fname = ((ZipEntry)zipEntries.nextElement()).getName();
+                            String labelIdxStr = fname.split("[.]")[0].split("_")[1];
+                            int labelIdx = (int)Float.valueOf(labelIdxStr).floatValue();
+                            if(labelIdx>maxROILabel)
+                                maxROILabel = labelIdx;
+                        }
+                        zipFile.close();
+                      }
+                    }
+                }
+                if(maxROILabel>0)
+                    nextROILabel = maxROILabel+1;
+            }
+            catch(Exception e)
+            {
+                IJ.log("Could not load previous max label info. Defaulting to 100.");
             }
 
         } else {
@@ -3692,60 +3763,136 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         return;
     }
     
+    public static void deleteZipEntry(File zipFile, ArrayList<String> labelsToDelete) throws IOException {
+       // get a temp file
+        File tempFile = new File(zipFile.getAbsolutePath() + ".tmp");
+        try{
+            // delete it, otherwise you cannot rename your existing zip to it.
+            tempFile.delete();
+            tempFile.deleteOnExit();
+            boolean renameOk=zipFile.renameTo(tempFile);
+            if (!renameOk)
+            {
+                throw new RuntimeException("could not rename the file "+zipFile.getAbsolutePath()+" to "+tempFile.getAbsolutePath());
+            }
+            byte[] buf = new byte[1024];
+
+            ZipInputStream zin = new ZipInputStream(new FileInputStream(tempFile));
+            ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(zipFile));
+
+            ZipEntry entry = zin.getNextEntry();
+            while (entry != null) {
+                String fname = entry.getName();
+                String labelIdx = fname.split("[.]")[0].split("_")[1];
+                boolean toBeDeleted = false;
+                for (String delLabel : labelsToDelete) {
+                    if (delLabel.equals(labelIdx)) {
+                        toBeDeleted = true;
+                        break;
+                    }
+                }
+                if (!toBeDeleted) {
+                    // Add ZIP entry to output stream.
+                    zout.putNextEntry(new ZipEntry(fname));
+                    // Transfer bytes from the ZIP file to the output file
+                    int len;
+                    while ((len = zin.read(buf)) > 0) {
+                        zout.write(buf, 0, len);
+                    }
+                }
+                entry = zin.getNextEntry();
+            }
+            // Close the streams        
+            zin.close();
+            // Compress the files
+            // Complete the ZIP file
+            zout.close();
+        }
+        catch(IOException e){
+            throw e;
+        }
+        finally {
+            tempFile.delete();
+        }
+    }
     public void saveROIs()
     {
         imp = WindowManager.getCurrentImage();
         int nextSliceIdx = imp.getCurrentSlice();
+        saveROIs(nextSliceIdx);
+        nextROILabel = nextROILabel + 1;
+    }
+    public void saveROIs(int nextSliceIdx)
+    {
         String loadedROIfolder = destFolder + File.separator + "stardist_rois";
-        String loadedROIname = "klbOut_Cam_Long_00257.lux.label_" + String.valueOf(nextSliceIdx) + ".zip";
-        
-        
-        try{
-            ArrayList<String> prevLabels = new ArrayList<String>();
-            ArrayList<String> currLabels = new ArrayList<String>();
-            
-            // Load previous version of ROI zip and extract the labels 
-            ZipFile zipFile = new ZipFile(loadedROIfolder +File.separator + loadedROIname);
-            Enumeration zipEntries = zipFile.entries();
-            while (zipEntries.hasMoreElements()) {
-                String fname = ((ZipEntry)zipEntries.nextElement()).getName();
-                String labelIdx = fname.split("[.]")[0].split("_")[1];
-                prevLabels.add(labelIdx);
-            }
-            
-            //Save the current ROI as a temp file
-            String outputFileName = loadedROIfolder + File.separator + "test.zip";
-            manager.runCommand("Save", outputFileName);
-            
-            // Load current version of ROI zip and extract the labels 
-            zipFile = new ZipFile(outputFileName);
-            zipEntries = zipFile.entries();
-            while (zipEntries.hasMoreElements()) {
-                String fname = ((ZipEntry)zipEntries.nextElement()).getName();
-                String labelIdx = fname.split("[.]")[0].split("_")[1];
-                currLabels.add(labelIdx);
-            }
-            
-            //Delete the olf ROI zip and rename the new file 
-            File destFile = new File(loadedROIfolder +File.separator + loadedROIname);
-            File sourceFile = new File(outputFileName);
-            destFile.delete();
-            sourceFile.renameTo(destFile);
-            
-            for (String s : prevLabels) {
-                 if (!currLabels.contains(s)){
-                     IJ.log("Deleting ROI Label:" + s);
+        String loadedROIname =  destNameRaw.substring(0,destNameRaw.lastIndexOf('.')) + ".label_" + String.valueOf(nextSliceIdx) + ".zip";
+        File tempFile = new File(loadedROIfolder + File.separator + loadedROIname);
+        if (tempFile.exists()){
+            try{
+                ArrayList<String> prevLabels = new ArrayList<String>();
+                ArrayList<String> currLabels = new ArrayList<String>();
+
+                // Load previous version of ROI zip and extract the labels 
+                ZipFile zipFile = new ZipFile(loadedROIfolder +File.separator + loadedROIname);
+                Enumeration zipEntries = zipFile.entries();
+                while (zipEntries.hasMoreElements()) {
+                    String fname = ((ZipEntry)zipEntries.nextElement()).getName();
+                    String labelIdx = fname.split("[.]")[0].split("_")[1];
+                    prevLabels.add(labelIdx);
+                }
+                zipFile.close();
+
+                //Save the current ROI as a temp file
+                String outputFileName = loadedROIfolder + File.separator + "test.zip";
+                manager.runCommand("Save", outputFileName);
+
+                // Load current version of ROI zip and extract the labels 
+                zipFile = new ZipFile(outputFileName);
+                zipEntries = zipFile.entries();
+                while (zipEntries.hasMoreElements()) {
+                    String fname = ((ZipEntry)zipEntries.nextElement()).getName();
+                    String labelIdx = fname.split("[.]")[0].split("_")[1];
+                    currLabels.add(labelIdx);
+                }
+                zipFile.close();
+
+                //Delete the old ROI zip and rename the new file 
+                File destFile = new File(loadedROIfolder +File.separator + loadedROIname);
+                File sourceFile = new File(outputFileName);
+                if(destFile.delete()){
+                    IJ.log("Deleting old ROI zip...");
+                }
+                sourceFile.renameTo(destFile);
+
+                //Produce the list of deleted labels
+                ArrayList<String> labelsToDelete = new ArrayList<String>();
+                for (String s : prevLabels) {
+                     if (!currLabels.contains(s)){
+                         IJ.log("Deleting ROI Label:" + s);
+                         labelsToDelete.add(s);
+                    }
+                }
+
+                // Remove the ROI from all other slices
+                if(labelsToDelete.size()>0){
+                    File dir = new File(loadedROIfolder);
+                    File[] directoryListing =  dir.listFiles(new FilenameFilter() {
+                        public boolean accept(File dir, String name) {
+                            return name.startsWith(destNameRaw.substring(0,destNameRaw.lastIndexOf('.')));
+                        }
+                    });
+                    if (directoryListing != null) {
+                      for (File child : Objects.requireNonNull(directoryListing)) {
+                        deleteZipEntry(child, labelsToDelete);
+                      }
+                    }
                 }
             }
-        
+            catch(IOException e)
+            {
+                IJ.log("Can't save slices:" +  e.getMessage());
+            }
         }
-        catch(Exception e)
-        {
-            IJ.log("Cant load  Slice index: " +  String.valueOf(nextSliceIdx));
-        }
-        
-        
-
     }
 
     // -------------------
@@ -10150,17 +10297,21 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             IJ.log("Loading Slice index: " +  String.valueOf(nextSliceIdx));
             boolean isSliceLoaded = false; 
             int curROInum = manager.getCount();
+            String loaded_slice_id = "";
             for (int r = 0; r < curROInum; r++) {
-                String slice_id = manager.getName(r).split("_", 0)[0];
-                if(slice_id.equals(String.valueOf(nextSliceIdx))){
+                loaded_slice_id = manager.getName(r).split("_", 0)[0];
+                if(loaded_slice_id.equals(String.valueOf(nextSliceIdx))){
                     isSliceLoaded = true;
                     break;
                 }
             }
             if(!isSliceLoaded){
+                if(curROInum > 0 && NumberUtils.isDigits(loaded_slice_id)){
+                    saveROIs(Integer.parseInt(loaded_slice_id));
+                }
                 manager.reset();
                 String loadedROIfolder = destFolder + File.separator + "stardist_rois";
-                String loadedROIname = "klbOut_Cam_Long_00257.lux.label_" + String.valueOf(nextSliceIdx) + ".zip";//destNameRaw;
+                String loadedROIname = destNameRaw.substring(0,destNameRaw.lastIndexOf('.')) + ".label_" + String.valueOf(nextSliceIdx) + ".zip";
                 loadROIs(loadedROIfolder, loadedROIname);
             }
         }
