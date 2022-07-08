@@ -193,7 +193,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
     private String defDir;
     private String defFile;
     private String defImageJDir;
-    private String[] curFileList;
+    private ArrayList<String> curFileList;
     private int curFileIdx;
     private boolean stepping;
     private boolean finishedSaving;
@@ -397,7 +397,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         add(btnSave);
 
         // load overlay
-        btnOverlay = new JButton("Overlay");
+        btnOverlay = new JButton("Delete Cell");
         btnOverlay.addActionListener(this);
         btnOverlay.addKeyListener(IJ.getInstance());
         btnOverlay.setToolTipText("Load a different annotation's contours as overlay");
@@ -2906,7 +2906,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 if (manager.getCount() != 0) {
                     IJ.log("  >> starting save...");
                     // save using a separate fcn instead:
-                    saveData();
+                    saveROIs(true);
 
                     IJ.log("in close confirm after save finished");
                 }
@@ -3154,46 +3154,44 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             curPredictionImageName = defFile;
             curPredictionImage = null;
             curOrigImage = null;
-            
+
             //Create a tif to load!
             boolean isKLBFile = false;
             String klbFileName = "";
-            if(destNameRaw.endsWith(".klb"))
-            {
-                try{
+            if (destNameRaw.endsWith(".klb")) {
+                try {
                     String cmdFile = "";
                     String os_str = System.getProperty("os.name");
-                    if(os_str.compareTo("Windows 10")==0)
+                    if (os_str.compareTo("Windows 10") == 0) {
                         cmdFile = "cmd.exe /c klb2tif.bat " + destFolder + File.separator + destNameRaw;
-                    else
+                    } else {
                         cmdFile = "./klb2tif.sh " + destFolder + File.separator + destNameRaw;
+                    }
 
                     Process process;
                     process = Runtime.getRuntime().exec(cmdFile);
                     int exitVal = process.waitFor();
                     if (exitVal == 0) {
                         klbFileName = destNameRaw;
-                        destNameRaw = destNameRaw.substring(0,destNameRaw.lastIndexOf('.')) + ".tif";
+                        destNameRaw = destNameRaw.substring(0, destNameRaw.lastIndexOf('.')) + ".tif";
                     } else {
                         System.out.println("Failed to convert KLB to TIF! Please switch to direct TIF input.");
                         throw new IOException("Failed to convert KLB to TIF! Please switch to direct TIF input.");
                     }
                     isKLBFile = true;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-                catch (IOException e) {
-                    e.printStackTrace();
-                } 
-                catch (InterruptedException e) {
-                    e.printStackTrace();
-                } 
             }
             opener2.open(destFolder + File.separator + destNameRaw);
             IJ.log("Opened file: " + destNameRaw);
-            
-            if(isKLBFile){
+
+            if (isKLBFile) {
                 File klbFile = new File(destFolder + File.separator + klbFileName);
                 File tifFile = new File(destFolder + File.separator + destNameRaw);
-                if(klbFile.exists() && tifFile.exists()){
+                if (klbFile.exists() && tifFile.exists()) {
                     tifFile.deleteOnExit();
                 }
             }
@@ -3204,60 +3202,70 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             fileListCount = 0;
             //String[] curFileList;
 
-            // get number of useful files
-            for (int i = 0; i < listOfFiles.length; i++) {
-                if (listOfFiles[i].isFile() && (listOfFiles[i].getName().endsWith(".png") || listOfFiles[i].getName().endsWith(".bmp") || listOfFiles[i].getName().endsWith(".jpg") || listOfFiles[i].getName().endsWith(".jpeg") || listOfFiles[i].getName().endsWith(".tif") || listOfFiles[i].getName().endsWith(".tiff"))) {
-                    fileListCount += 1;
-                }
-            }
-
             // update file list array
-            curFileList = new String[fileListCount];
+            curFileList = new ArrayList<String>();
             IJ.log("Found " + String.valueOf(fileListCount) + " images in current folder");
             fileListCount = 0;
+
             for (int i = 0; i < listOfFiles.length; i++) {
-                if (listOfFiles[i].isFile() && (listOfFiles[i].getName().endsWith(".png") || listOfFiles[i].getName().endsWith(".bmp") || listOfFiles[i].getName().endsWith(".jpg") || listOfFiles[i].getName().endsWith(".jpeg") || listOfFiles[i].getName().endsWith(".tif") || listOfFiles[i].getName().endsWith(".tiff"))) {
-                    curFileList[fileListCount] = listOfFiles[i].getName();
-                    fileListCount += 1;
+                if (listOfFiles[i].isFile()
+                        && (listOfFiles[i].getName().endsWith(".klb")
+                        || listOfFiles[i].getName().endsWith(".tif")
+                        || listOfFiles[i].getName().endsWith(".tiff"))) {
+                    //Check is tif/klb duplicate exists
+                    String fileNameNoExt = listOfFiles[i].getName().substring(0, listOfFiles[i].getName().lastIndexOf('.'));
+                    boolean isDuplicate = false;
+                    for (String otherFile : curFileList) {
+                        if (fileNameNoExt.equals(otherFile.substring(0, otherFile.lastIndexOf('.')))) {
+                            isDuplicate = true;
+                            break;
+                        }
+                    }
+                    //Only add to list if no duplicate exists.
+                    if (!isDuplicate) {
+                        curFileList.add(listOfFiles[i].getName());
+                        fileListCount += 1;
+                    }
                 }
             }
 
             // find current file in the list
             curFileIdx = -1;
-            for (int i = 0; i < curFileList.length; i++) {
-                if (curFileList[i].equals(destNameRaw)) {
+            String destNameNoExt = destNameRaw.substring(0, destNameRaw.lastIndexOf('.'));
+            for (int i = 0; i < curFileList.size(); i++) {
+                String fileNameNoExt = curFileList.get(i).substring(0, curFileList.get(i).lastIndexOf('.'));
+                if (destNameNoExt.equals(fileNameNoExt)) {
                     curFileIdx = i;
                     break;
                 }
             }
-            
 
-            try{
+            try {
                 String loadedROIfolder = destFolder + File.separator + "stardist_rois";
                 File dir = new File(loadedROIfolder);
                 int maxROILabel = 0;
-                if(dir.exists()){
+                if (dir.exists()) {
                     File[] directoryListing = dir.listFiles();
                     if (directoryListing != null) {
-                      for (File child : directoryListing) {
-                        ZipFile zipFile = new ZipFile(child.getAbsolutePath());
-                        Enumeration zipEntries = zipFile.entries();
-                        while (zipEntries.hasMoreElements()) {
-                            String fname = ((ZipEntry)zipEntries.nextElement()).getName();
-                            String labelIdxStr = fname.split("[.]")[0].split("_")[1];
-                            int labelIdx = (int)Float.valueOf(labelIdxStr).floatValue();
-                            if(labelIdx>maxROILabel)
-                                maxROILabel = labelIdx;
+                        for (File child : directoryListing) {
+                            ZipFile zipFile = new ZipFile(child.getAbsolutePath());
+                            Enumeration zipEntries = zipFile.entries();
+                            while (zipEntries.hasMoreElements()) {
+                                String fname = ((ZipEntry) zipEntries.nextElement()).getName();
+                                String labelIdxStr = fname.split("[.]")[0].split("_")[1];
+                                int labelIdx = (int) Float.valueOf(labelIdxStr).floatValue();
+                                if (labelIdx > maxROILabel) {
+                                    maxROILabel = labelIdx;
+                                }
+                            }
+                            zipFile.close();
                         }
-                        zipFile.close();
-                      }
                     }
                 }
-                if(maxROILabel>0)
-                    nextROILabel = maxROILabel+1;
-            }
-            catch(Exception e)
-            {
+                if (maxROILabel > 0) {
+                    nextROILabel = maxROILabel + 1;
+                }
+            } catch (Exception e) {
                 IJ.log("Could not load previous max label info. Defaulting to 100.");
             }
 
@@ -3267,8 +3275,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             imp.show();
             String title = "-Parsed input.image-";
             imp.setTitle(title);
-            curFileList = new String[1];
-            curFileList[0] = title;
+            curFileList = new ArrayList<String>();
+            curFileList.add(title);
             curFileIdx = 0;
             fileListCount = 1;
             defFile = title;
@@ -3305,7 +3313,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             buttonPrev.setEnabled(true);
         }
 
-        if (curFileIdx == curFileList.length - 1) {
+        if (curFileIdx == curFileList.size() - 1) {
             // last image, inactivate next:
             buttonNext.setEnabled(false);
         } else {
@@ -3680,7 +3688,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         }
 
         // check if there is a list of images and if we can have a previous image
-        if (curFileList != null && curFileList.length > 1) {
+        if (curFileList != null && curFileList.size() > 1) {
             // more than 1 images in the list
             if (curFileIdx > 0) {
                 // current image is not the first, we can go back
@@ -3691,7 +3699,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 // open previous image with Open fcn:
                 // set image name:
                 curFileIdx -= 1;
-                defFile = curFileList[curFileIdx];
+                defFile = curFileList.get(curFileIdx);
                 //new Runner("Open", imp);
                 openNew(runnerInstance);
                 imp = WindowManager.getCurrentImage();
@@ -3727,9 +3735,9 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         }
 
         // check if there is a list of images and if we can have a previous image
-        if (curFileList != null && curFileList.length > 1) {
+        if (curFileList != null && curFileList.size() > 1) {
             // more than 1 images in the list
-            if (curFileIdx < curFileList.length - 1) {
+            if (curFileIdx < curFileList.size() - 1) {
                 // current image is not the last, we can go forward
                 stepping = true;
 
@@ -3738,7 +3746,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 // open next image with Open fcn:
                 // set image name:
                 curFileIdx += 1;
-                defFile = curFileList[curFileIdx];
+                defFile = curFileList.get(curFileIdx);
                 //new Runner("Open", imp);
                 openNew(runnerInstance);
                 imp = WindowManager.getCurrentImage();
@@ -3762,21 +3770,20 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 "No next image in current folder");
         return;
     }
-    
+
     public static void deleteZipEntry(File zipFile, ArrayList<String> labelsToDelete) throws IOException {
-       // get a temp file
+        // get a temp file
         File tempFile = new File(zipFile.getAbsolutePath() + ".tmp");
-        try{
+        try {
             // delete it, otherwise you cannot rename your existing zip to it.
             tempFile.delete();
             tempFile.deleteOnExit();
-            boolean renameOk=zipFile.renameTo(tempFile);
-            if (!renameOk)
-            {
-                throw new RuntimeException("could not rename the file "+zipFile.getAbsolutePath()+" to "+tempFile.getAbsolutePath());
+            boolean renameOk = zipFile.renameTo(tempFile);
+            if (!renameOk) {
+                throw new RuntimeException("could not rename the file " + zipFile.getAbsolutePath() + " to " + tempFile.getAbsolutePath());
             }
             byte[] buf = new byte[1024];
-
+            boolean allROIRemoved = true;
             ZipInputStream zin = new ZipInputStream(new FileInputStream(tempFile));
             ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(zipFile));
 
@@ -3792,7 +3799,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                     }
                 }
                 if (!toBeDeleted) {
-                    // Add ZIP entry to output stream.
+                    // Add ZIP entry to output stream and register that atleast 1 ROI still exists.
+                    allROIRemoved = false;
                     zout.putNextEntry(new ZipEntry(fname));
                     // Transfer bytes from the ZIP file to the output file
                     int len;
@@ -3807,91 +3815,97 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             // Compress the files
             // Complete the ZIP file
             zout.close();
-        }
-        catch(IOException e){
+            if(allROIRemoved)
+                zipFile.delete();
+        } catch (IOException e) {
             throw e;
-        }
-        finally {
+        } finally {
             tempFile.delete();
         }
     }
-    public void saveROIs()
-    {
+
+    public void saveROIs(boolean deleteCell) {
         imp = WindowManager.getCurrentImage();
         int nextSliceIdx = imp.getCurrentSlice();
-        saveROIs(nextSliceIdx);
+        saveROIs(deleteCell, nextSliceIdx);
         nextROILabel = nextROILabel + 1;
     }
-    public void saveROIs(int nextSliceIdx)
-    {
+
+    public void saveROIs(boolean deleteCell, int nextSliceIdx) {
         String loadedROIfolder = destFolder + File.separator + "stardist_rois";
-        String loadedROIname =  destNameRaw.substring(0,destNameRaw.lastIndexOf('.')) + ".label_" + String.valueOf(nextSliceIdx) + ".zip";
+        String loadedROIname = destNameRaw.substring(0, destNameRaw.lastIndexOf('.')) + ".label_" + String.valueOf(nextSliceIdx) + ".zip";
         File tempFile = new File(loadedROIfolder + File.separator + loadedROIname);
-        if (tempFile.exists()){
-            try{
-                ArrayList<String> prevLabels = new ArrayList<String>();
-                ArrayList<String> currLabels = new ArrayList<String>();
+        
+        try {
+            //If ROI never existed before and created new by user. 
+            if (!tempFile.exists()) {
+                ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(tempFile));
+                zout.close();
+            }
 
-                // Load previous version of ROI zip and extract the labels 
-                ZipFile zipFile = new ZipFile(loadedROIfolder +File.separator + loadedROIname);
-                Enumeration zipEntries = zipFile.entries();
-                while (zipEntries.hasMoreElements()) {
-                    String fname = ((ZipEntry)zipEntries.nextElement()).getName();
-                    String labelIdx = fname.split("[.]")[0].split("_")[1];
-                    prevLabels.add(labelIdx);
-                }
-                zipFile.close();
+            ArrayList<String> prevLabels = new ArrayList<String>();
+            ArrayList<String> currLabels = new ArrayList<String>();
 
-                //Save the current ROI as a temp file
-                String outputFileName = loadedROIfolder + File.separator + "test.zip";
-                manager.runCommand("Save", outputFileName);
+            // Load previous version of ROI zip and extract the labels 
+            ZipFile zipFile = new ZipFile(loadedROIfolder + File.separator + loadedROIname);
+            Enumeration zipEntries = zipFile.entries();
+            while (zipEntries.hasMoreElements()) {
+                String fname = ((ZipEntry) zipEntries.nextElement()).getName();
+                String labelIdx = fname.split("[.]")[0].split("_")[1];
+                prevLabels.add(labelIdx);
+            }
+            zipFile.close();
 
-                // Load current version of ROI zip and extract the labels 
-                zipFile = new ZipFile(outputFileName);
-                zipEntries = zipFile.entries();
-                while (zipEntries.hasMoreElements()) {
-                    String fname = ((ZipEntry)zipEntries.nextElement()).getName();
-                    String labelIdx = fname.split("[.]")[0].split("_")[1];
-                    currLabels.add(labelIdx);
-                }
-                zipFile.close();
+            //Save the current ROI as a temp file
+            String outputFileName = loadedROIfolder + File.separator + "test.zip";
+            manager.runCommand("Save", outputFileName);
 
-                //Delete the old ROI zip and rename the new file 
-                File destFile = new File(loadedROIfolder +File.separator + loadedROIname);
-                File sourceFile = new File(outputFileName);
-                if(destFile.delete()){
-                    IJ.log("Deleting old ROI zip...");
-                }
-                sourceFile.renameTo(destFile);
+            // Load current version of ROI zip and extract the labels 
+            zipFile = new ZipFile(outputFileName);
+            zipEntries = zipFile.entries();
+            while (zipEntries.hasMoreElements()) {
+                String fname = ((ZipEntry) zipEntries.nextElement()).getName();
+                String labelIdx = fname.split("[.]")[0].split("_")[1];
+                currLabels.add(labelIdx);
+            }
+            zipFile.close();
 
+            //Delete the old ROI zip and rename the new file 
+            File destFile = new File(loadedROIfolder + File.separator + loadedROIname);
+            File sourceFile = new File(outputFileName);
+            if (destFile.delete()) {
+                IJ.log("Deleting old ROI zip...");
+            }
+            sourceFile.renameTo(destFile);
+
+            //Delete ROI label from all frames, deleting the whole cell!
+            if(deleteCell){
                 //Produce the list of deleted labels
                 ArrayList<String> labelsToDelete = new ArrayList<String>();
                 for (String s : prevLabels) {
-                     if (!currLabels.contains(s)){
-                         IJ.log("Deleting ROI Label:" + s);
-                         labelsToDelete.add(s);
+                    if (!currLabels.contains(s)) {
+                        IJ.log("Deleting ROI Label:" + s);
+                        labelsToDelete.add(s);
                     }
                 }
 
                 // Remove the ROI from all other slices
-                if(labelsToDelete.size()>0){
+                if (labelsToDelete.size() > 0) {
                     File dir = new File(loadedROIfolder);
-                    File[] directoryListing =  dir.listFiles(new FilenameFilter() {
+                    File[] directoryListing = dir.listFiles(new FilenameFilter() {
                         public boolean accept(File dir, String name) {
-                            return name.startsWith(destNameRaw.substring(0,destNameRaw.lastIndexOf('.')));
+                            return name.startsWith(destNameRaw.substring(0, destNameRaw.lastIndexOf('.')));
                         }
                     });
                     if (directoryListing != null) {
-                      for (File child : Objects.requireNonNull(directoryListing)) {
-                        deleteZipEntry(child, labelsToDelete);
-                      }
+                        for (File child : Objects.requireNonNull(directoryListing)) {
+                            deleteZipEntry(child, labelsToDelete);
+                        }
                     }
                 }
             }
-            catch(IOException e)
-            {
-                IJ.log("Can't save slices:" +  e.getMessage());
-            }
+        } catch (IOException e) {
+            IJ.log("Can't save slices:" + e.getMessage());
         }
     }
 
@@ -3940,20 +3954,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             return;
         }
 
-        // check if stepping is true and only save if the roi list is not empty
-        /*
-		if (manager==null || manager.getCount()==0) {
-			// empty list, do not save
-			IJ.log("Nothing to save yet");
-			MessageDialog nothing2saveMsg=new MessageDialog(instance,
-             "Info",
-             "Nothing to save");
-			if (stepping) {
-				finishedSaving=true;
-			}
-			return;
-		}
-         */
         IJ.log("saving...");
 
         if (stepping) {
@@ -3964,7 +3964,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         //IJ.log("renaming ROIs...");
         //renameROIs();
         //IJ.log("renaming done");
-
         if (origMaskFileNames == null || !roisFromArgs || !imageFromArgs) {
 
             if (startedClassifying) {
@@ -4837,7 +4836,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             startedClassifying = true;
         }
     }
-    
+
     public void loadROIs(String loadedROIfolder, String loadedROIname) {
         if (!started || WindowManager.getCurrentWindow() == null) {
             IJ.showStatus("Open an image first");
@@ -4849,36 +4848,33 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
         // check if we have annotations in the list before loading anything to it
         int curROInum = manager.getCount();
-//        IJ.log("Before loading we had " + String.valueOf(curROInum) + " contours");
-//        int prevROIcount = manager.getCount();
-//        if (loadedROI) {
-//            // currently the loaded rois are to be deleted
-//            //Repeatedly select and delete the first ROI
-//            isDeleteProcess = true;
-//            for (int r = 0; r < curROInum; r++) {
-//                manager.select(0);
-//                manager.runCommand("delete");
-//            }
-//            isDeleteProcess = false;
-//        }
         File tempFile = new File(loadedROIfolder + File.separator + loadedROIname);
-        if (tempFile.exists()){
-            boolean loadedROIsuccessfully = manager.runCommand("Open", loadedROIfolder + File.separator + loadedROIname);
-            if (!loadedROIsuccessfully) {
-                IJ.log("Failed to open ROI: " + loadedROIname);
-                MessageDialog failed2loadROIMsg = new MessageDialog(instance,
-                        "Error",
-                        "Failed to open ROI .zip file");
-                return;
-            } else {
-                IJ.log("Opened ROI: " + loadedROIname);
+        if (tempFile.exists()) {
+            
+            try{
+                ZipFile zipFile = new ZipFile(loadedROIfolder + File.separator + loadedROIname);
+                Enumeration zipEntries = zipFile.entries();
+                if (zipEntries.hasMoreElements()) {
+
+                    boolean loadedROIsuccessfully = manager.runCommand("Open", loadedROIfolder + File.separator + loadedROIname);
+                    if (!loadedROIsuccessfully) {
+                        IJ.log("Failed to open ROI: " + loadedROIname);
+                        MessageDialog failed2loadROIMsg = new MessageDialog(instance,
+                                "Error",
+                                "Failed to open ROI .zip file");
+                        return;
+                    } else {
+                        IJ.log("Opened ROI: " + loadedROIname);
+                    }
+                    loadedROI = true;
+                    curROInum = manager.getCount();
+                    IJ.log("After loading we have " + String.valueOf(curROInum) + " contours");
+
+                }
+                zipFile.close();
+            } catch (IOException e) {
+                IJ.log("Failed to load ROIs:" + e.getMessage());
             }
-            //manager.runCommand("Show All");
-
-
-            loadedROI = true;
-            curROInum = manager.getCount();
-            IJ.log("After loading we have " + String.valueOf(curROInum) + " contours");
         }
     }
 
@@ -6379,7 +6375,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
      * @param invRoi inverted ROI to check for fautly invertion
      * @param origRoi original ROI for invertion if needed
      * @return a correctly inverted ROI
-	*
+     *
      */
     public Roi checkInvertedRoi(Roi invRoi, Roi origRoi, ImagePlus mask) {
 
@@ -7818,7 +7814,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         String exportFolderClass = null;
 
         // see if importopsef was called initially
-        if (exportRootFolderFromArgs != null && roisFromArgs) {
+        if (exportRootFolderFromArgs != null && roisFromArgs) 
+        {
 
             // first save everything we have open and close the image
             //closeWindowsAndSave();
@@ -8083,7 +8080,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             // show the latest opened roi stack again <-- done in saveData() fcn
             //updateROImanager(managerList.get(currentSliceIdx-1),showCnt);
             // should also parse the mask names for saving then the annot folder should be selected automatically like 'opsef'
-        } else {
+        } 
+        else {
             // normal "AnnotatorJ" init
 
             // save current rois first
@@ -8840,8 +8838,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                             lastStartTime = System.nanoTime();
                         }
                     }
-                }
-                else{
+                } else {
                     IJ.log("Renaming selection automatically...");
                     imp = WindowManager.getCurrentImage();
                     // add this roi to the list
@@ -8858,7 +8855,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                         curROI.setName(curROIname);
                     }
                 }
-                
 
                 // check if contour assist checkbox is selected
                 if (contAssist) {
@@ -9372,7 +9368,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 // open class name selector dialog box
                 // create dest folder with class name
                 // save the ROI.zip there
-                saveROIs();
+                saveROIs(true);
                 //saveData();
             } // LOAD --------------------------------
             else if (command.equals("Load")) {
@@ -9380,94 +9376,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
                 loadROIs();
             } // OVERLAY ---------------------------
-            else if (command.equals("Overlay")) {
-                // loads a previous annotation as overlay on the current image
-                if (!started || WindowManager.getCurrentWindow() == null) {
-                    IJ.showStatus("Open an image first");
-                    MessageDialog notStartedMsg2 = new MessageDialog(instance,
-                            "Warning",
-                            "Click Open to select an image first");
-                    return;
-                }
-
-                // file open dialog
-                Opener opener5 = new Opener();
-
-                OpenDialog opener6 = new OpenDialog("Select an annotation (ROI) .zip file", null);
-                String overlayedROIfolder = opener6.getDirectory();
-                String overlayedROIname = opener6.getFileName();
-                // see if this is a roi zip
-                if (overlayedROIname.contains("_ROIs") || overlayedROIname.contains("_bboxes")) {
-                    // roi zip selected
-
-                    overlayManager = new RoiManager(false);
-                    boolean overlayedROIsuccessfully = overlayManager.runCommand("Open", overlayedROIfolder + File.separator + overlayedROIname);
-                    if (!overlayedROIsuccessfully) {
-                        IJ.log("Failed to open ROI: " + overlayedROIname);
-                        MessageDialog failed2loadROIMsg = new MessageDialog(instance,
-                                "Error",
-                                "Failed to open ROI .zip file");
-                        return;
-                    } else {
-                        IJ.log("Opened ROI for overlay: " + overlayedROIname);
-                    }
-
-                    overlayedROI = true;
-                    int curOverlayedROInum = overlayManager.getCount();
-                    IJ.log("Overlayed " + String.valueOf(curOverlayedROInum) + " contours");
-
-                    // to overlay the loaded contours on image
-                    overlayCommandsObj = new OverlayCommands();
-                    // set boolean
-                    overlayAdded = true;
-
-                } else if (overlayedROIname.contains("_semantic")) {
-                    // semantic image selected
-                    if (selectedAnnotationType.equals("semantic")) {
-                        MessageDialog semOverlayMsg = new MessageDialog(instance,
-                                "Warning",
-                                "Overlaying semantic regions is not \npermitted in semantic annotation mode.");
-                        return;
-                    }
-                    // TODO!
-
-                    opener5.open(overlayedROIfolder + File.separator + overlayedROIname);
-                    ImagePlus overlayim = WindowManager.getImage(overlayedROIname); // load image here
-                    if (overlayim == null) {
-                        IJ.log("Failed to open overlay image");
-                        return;
-                    }
-
-                    // from mask --> selection --> overlay
-                    ImageConverter converter = new ImageConverter(overlayim);
-                    converter.convertToGray8();
-                    (new Thresholder()).run("skip");
-                    Roi semanticRegions = ThresholdToSelection.run(overlayim);
-
-                    overlayim.changes = false;
-                    overlayim.close();
-                    overlaySemantic = new Overlay(semanticRegions);
-
-                    String currentColorHex = ColorToHex(defOverlay);
-                    String opacityColor = "#66" + currentColorHex;
-                    overlaySemantic.setFillColor(ij.plugin.Colors.decode(opacityColor, defOverlay));
-
-                    imp.setOverlay(overlaySemantic);
-                    //imp.getProcessor().drawOverlay(overlaySemantic);
-
-                    // to overlay the loaded contours on image
-                    overlayCommandsObj = new OverlayCommands();
-                    // set boolean
-                    overlayAdded = true;
-
-                    overlayedROI = false;
-                    overlayedSemantic = true;
-                }
-
-                // set show overlay checkbox
-                showOvl = true;
-                chckbxShowOverlay.setSelected(true);
-
+            else if (command.equals("Delete Cell")) {
+               saveROIs(true);
             } // COLOURS ------------------------------------------------
             else if (command.equals("Colours")) {
 
@@ -10152,166 +10062,38 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
         @Override
         public void imageClosed(ImagePlus impp) {
-            //impp=imp;
-            // debug:
-            //IJ.log("in imageClosed fcn...");
-            if (lastKey != null && !closeingOnPurpuse) { // && lislastKey!=null) {
-                IJ.log("in imageClosed fnc \"" + lastKey.getKeyChar() + "\" key was released");
-                // make sure that pressing 'w' doesnt close the image without warning
-                if (lastKey.getKeyCode() == KeyEvent.VK_W) {
-                    // if closed, reopen it
-                    Window curWindow = WindowManager.getWindow(curPredictionImageName);
-                    if (curWindow == null) {
-                        // reopen the image
-                        Opener opener2 = new Opener();
-                        opener2.open(destFolder + File.separator + curPredictionImageName);
-
-                        IJ.log("Re-opened file: " + curPredictionImageName);
-
-                        // keep this window instance for key event listening
-                        imWindow = WindowManager.getWindow(curPredictionImageName);
-                        imp = WindowManager.getCurrentImage();
-                        //curOrigImage=WindowManager.getImage(curPredictionImageName);
-                        ImagePlus curOrigImageIP = WindowManager.getImage(curPredictionImageName);
-                        curOrigImage = curOrigImageIP.getProcessor();
-
-                        // prepare annotation tools
-                        if (selectedAnnotationType.equals("instance") || selectedAnnotationType.equals("bounding box")) {
-                            // instance segmentation
-                            // open ROI manager in bg
-                            manager = RoiManager.getInstance();
-                            if (manager == null) {
-                                // display new ROImanager in background
-                                //manager = new RoiManager(false);
-                                // actually display it
-                                manager = new RoiManager();
-                            } else {
-                                // do not close it!
-                            }
-                            if (showCnt) {
-                                manager.runCommand("Show All");
-                            }
-                        }
-
-                        instance.toFront();
-                        imWindow.toFront();
-
-                        // set key bindings to add new contours by pressing "t" as in ROI manager
-                        KeyListener listener = new KeyListener() {
-                            //@Override 
-                            public void keyPressed(KeyEvent event) {
-                                //IJ.log("key was pressed");
-                                if (event.getKeyCode() == KeyEvent.VK_SPACE) {
-                                    // space is pressed
-                                    isSpaceDown = true;
-                                    // debug:
-                                    //IJ.log("  ---- space down ---- ");
-                                }
-                            }
-
-                            //@Override
-                            public void keyReleased(KeyEvent event) {
-                                IJ.log("key was released");
-                                if (event.getKeyCode() == KeyEvent.VK_SPACE) {
-                                    // space is pressed
-                                    isSpaceDown = false;
-                                    // debug:
-                                    //IJ.log("  ---- space up ---- ");
-                                }
-                                checkKeyEvents(event);
-                            }
-
-                            //@Override
-                            public void keyTyped(KeyEvent event) {
-                                //IJ.log("key was typed");
-                            }
-                        };
-
-                        KeyListener[] activeKeyListeners = WindowManager.getCurrentImage().getCanvas().getKeyListeners();
-                        MouseListener[] activeMouseListeners = WindowManager.getCurrentImage().getCanvas().getMouseListeners();
-                        IJ.log("current image has " + activeKeyListeners.length + " key listeners and | " + activeMouseListeners.length + " mouse listeners");
-                        imWindow.addKeyListener(IJ.getInstance());
-                        WindowManager.getCurrentImage().getCanvas().addMouseListener(new Runner("", imp));
-                        WindowManager.getCurrentImage().getCanvas().addMouseWheelListener(new Runner("", imp));
-                        WindowManager.getCurrentImage().getCanvas().addMouseMotionListener(new Runner("", imp));
-                        WindowManager.getCurrentImage().getCanvas().addKeyListener(listener);
-
-                        // add protection against accidental image closing by pressing 'w'
-                        ImageListenerNew imlisn = new ImageListenerNew();
-                        imlisn.addImageListenerNew(imp);
-
-                        // reset assist vars as if "ctrl"+"delete" was pressed and suggestion was rejected
-                        if (inAssisting) {
-                            imp.deleteRoi();
-                            curROI = imp.getRoi();
-                            if (curROI != null) {
-                                // failed to remove the current ROI
-                                IJ.log("Failed to remove current suggested ROI, please do it manually.");
-                                //return;
-                            }
-
-                            // reset vars
-                            invertedROI = null;
-                            ROIpositionX = 0;
-                            ROIpositionY = 0;
-                            acObjects = null;
-                            inAssisting = false;
-                            startedEditing = false;
-                            //origEditedROI=null;
-                            Annotator_MainFrameNew.this.origEditedROI = null;
-                            Annotator_MainFrameNew.this.editROIidx = -1;
-                            if (editManager != null) {
-                                editManager.reset();
-                                // update normal manager
-                                if (showCnt) {
-                                    manager.runCommand("Show None");
-                                    manager.runCommand("Show All");
-                                } else {
-                                    manager.runCommand("Show All");
-                                    manager.runCommand("Show None");
-                                }
-                            }
-                            // reset freehand selection tool
-                            curToolbar.setTool(Toolbar.FREEROI);
-                        }
-                    }
-
-                    //lislastKey=null;
-                    //lastKey=null;
-                    this.listener3 = null;
-
-                } else {
-                    // close it anyway
-                    if (impp.getWindow() != null) {
-                        impp.changes = false;
-                        impp.getWindow().close();
-                    }
-                }
+            if (manager != null) {
+                // delete selections from image
+                manager.runCommand("Show None");
+                //Selection selectionObj=new Selection();
+                //selectionObj.run("none");
+                manager.close();
+                manager = null;
             }
         }
-        
-	@Override
+
+        @Override
         public void imageUpdated(ImagePlus imp) {
-            IJ.log("Current Slice index: " +  String.valueOf(currentSliceIdx));
+            IJ.log("Current Slice index: " + String.valueOf(currentSliceIdx));
             int nextSliceIdx = imp.getCurrentSlice();
-            IJ.log("Loading Slice index: " +  String.valueOf(nextSliceIdx));
-            boolean isSliceLoaded = false; 
+            IJ.log("Loading Slice index: " + String.valueOf(nextSliceIdx));
+            boolean isSliceLoaded = false;
             int curROInum = manager.getCount();
             String loaded_slice_id = "";
             for (int r = 0; r < curROInum; r++) {
                 loaded_slice_id = manager.getName(r).split("_", 0)[0];
-                if(loaded_slice_id.equals(String.valueOf(nextSliceIdx))){
+                if (loaded_slice_id.equals(String.valueOf(nextSliceIdx))) {
                     isSliceLoaded = true;
                     break;
                 }
             }
-            if(!isSliceLoaded){
-                if(curROInum > 0 && NumberUtils.isDigits(loaded_slice_id)){
-                    saveROIs(Integer.parseInt(loaded_slice_id));
+            if (!isSliceLoaded) {
+                if (curROInum > 0 && NumberUtils.isDigits(loaded_slice_id)) {
+                    saveROIs(false, Integer.parseInt(loaded_slice_id));
                 }
                 manager.reset();
                 String loadedROIfolder = destFolder + File.separator + "stardist_rois";
-                String loadedROIname = destNameRaw.substring(0,destNameRaw.lastIndexOf('.')) + ".label_" + String.valueOf(nextSliceIdx) + ".zip";
+                String loadedROIname = destNameRaw.substring(0, destNameRaw.lastIndexOf('.')) + ".label_" + String.valueOf(nextSliceIdx) + ".zip";
                 loadROIs(loadedROIfolder, loadedROIname);
             }
         }
