@@ -486,8 +486,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         btnExport.setText("[^]");
         btnExport.addActionListener(this);
         btnExport.addKeyListener(IJ.getInstance());
-        //Image imgIcon = ImageIO.read(getClass().getResource("smalljavaexport.gif"));
-        //btnExport.setIcon(new ImageIcon(imgIcon));
         btnExport.setToolTipText("Export current annotation");
         add(btnExport);
 
@@ -2391,13 +2389,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         transferProperties(curROI, p);
         imp.setRoi(p);
         curROI = p;
-        // ---- interpolate() fcn quote end
-        //return curROI;
-        //}
-
         IJ.log("done");
-        //IJ.log("Smoothed ROI");
-
         return curROI;
     }
 
@@ -9276,49 +9268,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
         }
 
-        // previously working method that fails on multiscroll:
-        /*
-        public void mouseWheelMoved(MouseWheelEvent e) {
-        	int direction=e.getWheelRotation();
-        	//debug:
-        	//IJ.log("direction: "+String.valueOf(direction));
-        	int amount=0;
-        	int up=0;
-        	if (direction>0){
-        		amount=e.getScrollAmount();
-        		IJ.log("--Mouse wheel moved down "+String.valueOf(amount)); //next
-        	}
-        	else {
-        		amount=-e.getScrollAmount();
-        		IJ.log("--Mouse wheel moved up "+String.valueOf(amount)); //prev
-        		up=2;
-        	}
-
-        	// update currently opened roi manager in the manager list
-        	managerList.set(currentSliceIdx-1,manager);
-
-        	currentSliceIdx=imp.getCurrentSlice() + direction; //+ direction;
-        	//int tempSlice=imp.getCurrentSlice();
-        	if (imp!=null && imp.getStack().getSize()>1) {
-        		//currentSliceIdx=imp.getCurrentSlice();
-        		IJ.log("Set current slice to "+String.valueOf(currentSliceIdx));
-        		if (currentSliceIdx>=1 && currentSliceIdx<=imp.getStack().getSize()) {
-	        		// display the roi set corresponding to this slice
-	        		imp.setPosition(1, currentSliceIdx, 1);
-	        		updateROImanager(managerList.get(currentSliceIdx-1),showCnt); // also display the rois if checked
-	        		imp.setPosition(1, currentSliceIdx-1+up, 1);
-	        	} else {
-	        		IJ.log("no more slices to scroll");
-	        		if (currentSliceIdx<1){
-	        			currentSliceIdx=1;
-	        		} else if (currentSliceIdx>imp.getStack().getSize()) {
-	        			currentSliceIdx=imp.getStack().getSize();
-	        		}
-
-	        	}
-        	}
-        }
-         */
         // execute functions bound to buttons in the main window:
         // open, load, save, overlay, prev/next
         void runCommand(String command, ImagePlus imp) {
@@ -10078,26 +10027,27 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             int nextSliceIdx = imp.getCurrentSlice();
             IJ.log("Loading Slice index: " + String.valueOf(nextSliceIdx));
             boolean isSliceLoaded = false;
-            int curROInum = manager.getCount();
-            String loaded_slice_id = "";
-            for (int r = 0; r < curROInum; r++) {
-                loaded_slice_id = manager.getName(r).split("_", 0)[0];
-                if (loaded_slice_id.equals(String.valueOf(nextSliceIdx))) {
-                    isSliceLoaded = true;
-                    break;
+            if (manager != null) {
+                int curROInum = manager.getCount();
+                String loaded_slice_id = "";
+                for (int r = 0; r < curROInum; r++) {
+                    loaded_slice_id = manager.getName(r).split("_", 0)[0];
+                    if (loaded_slice_id.equals(String.valueOf(nextSliceIdx))) {
+                        isSliceLoaded = true;
+                        break;
+                    }
                 }
-            }
-            if (!isSliceLoaded) {
-                if (curROInum > 0 && NumberUtils.isDigits(loaded_slice_id)) {
-                    saveROIs(false, Integer.parseInt(loaded_slice_id));
+                if (!isSliceLoaded) {
+                    if (curROInum > 0 && NumberUtils.isDigits(loaded_slice_id)) {
+                        saveROIs(false, Integer.parseInt(loaded_slice_id));
+                    }
+                    manager.reset();
+                    String loadedROIfolder = destFolder + File.separator + "stardist_rois";
+                    String loadedROIname = destNameRaw.substring(0, destNameRaw.lastIndexOf('.')) + ".label_" + String.valueOf(nextSliceIdx) + ".zip";
+                    loadROIs(loadedROIfolder, loadedROIname);
                 }
-                manager.reset();
-                String loadedROIfolder = destFolder + File.separator + "stardist_rois";
-                String loadedROIname = destNameRaw.substring(0, destNameRaw.lastIndexOf('.')) + ".label_" + String.valueOf(nextSliceIdx) + ".zip";
-                loadROIs(loadedROIfolder, loadedROIname);
             }
         }
-
     } // ImageListenerNew class
 
     // inner class for listening to mouse wheel scrolls
