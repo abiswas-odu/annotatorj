@@ -7,32 +7,23 @@ import java.awt.*;
 import ij.plugin.frame.*;
 import ij.io.OpenDialog;
 import ij.io.Opener;
-import ij.macro.Functions;
 import ij.measure.ResultsTable;
 import ij.gui.Roi;
 import ij.gui.PolygonRoi;
-import ij.plugin.Hotkeys;
-import ij.plugin.Selection;
 import ij.plugin.OverlayCommands;
 import ij.plugin.RoiEnlarger;
-import ij.plugin.tool.BrushTool;
 import ij.plugin.tool.PlugInTool;
-import ij.plugin.Colors;
 import ij.plugin.Converter;
 import ij.plugin.Thresholder;
 import ij.plugin.filter.ThresholdToSelection;
-import ij.plugin.Resizer;
 import ij.io.DirectoryChooser;
 
 import java.awt.event.*;
-import java.awt.image.BufferedImage;
 import java.io.*;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
@@ -44,19 +35,13 @@ import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JSeparator;
-import java.util.Vector;
 import javax.swing.JOptionPane;
-import javax.swing.WindowConstants;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import java.awt.Color;
-import java.awt.Checkbox;
 import java.awt.Button;
-import javax.swing.AbstractButton;
 import javax.swing.ButtonGroup;
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 
 import java.util.zip.ZipFile;
@@ -65,42 +50,17 @@ import java.util.zip.ZipOutputStream;
 import java.util.zip.ZipInputStream;
 import java.util.Enumeration;
 import java.util.ArrayList;
-import java.lang.Math;
-import java.util.stream.*;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
-import java.lang.Double;
-import java.lang.Integer;
 import javax.swing.JFileChooser;
 import javax.swing.JSlider;
-import java.lang.System;
 import javax.swing.JComboBox;
-
-import org.datavec.image.loader.NativeImageLoader;
-import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.modelimport.keras.KerasModelImport;
-import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.indexing.NDArrayIndex;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.deeplearning4j.nn.modelimport.keras.exceptions.InvalidKerasConfigurationException;
-import org.deeplearning4j.nn.modelimport.keras.exceptions.UnsupportedKerasConfigurationException;
-import org.nd4j.enums.ImageResizeMethod;
-import org.nd4j.linalg.api.ops.impl.image.ImageResize;
-import org.nd4j.linalg.api.ops.impl.image.ResizeBicubic;
-import org.nd4j.linalg.api.ops.impl.image.ResizeNearestNeighbor;
-import org.datavec.image.transform.ColorConversionTransform;
-import static org.opencv.imgproc.Imgproc.COLOR_BGR2RGB;
-
-// for active contour
-import com.mathworks.toolbox.javabuilder.*;
 import java.util.Objects;
 import org.apache.commons.lang3.math.NumberUtils;
-import runAC.*;
-//import org.janelia.simview.klb.*;
 
 public class Annotator_MainFrameNew extends PlugInFrame implements ActionListener, ItemListener { //,KeyListener
 
@@ -219,10 +179,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
     public final static String DYNAMIC_LOAD_CLASSPATH = "ND4J_DYNAMIC_LOAD_CLASSPATH";
     public final static String DYNAMIC_LOAD_CLASSPATH_PROPERTY = "org.nd4j.backend.dynamicbackend";
     // contour assist vars (dl4j)
-    private ComputationGraph trainedUNetModel;
-    private ImageProcessor curPredictionImage;
-    private String curPredictionImageName;
-    //private ImagePlus curOrigImage;
     private ImageProcessor curOrigImage;
     private Roi invertedROI;
     private double ROIpositionX;
@@ -454,6 +410,11 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         add(chckbxShowOverlay);
         add(chckbxStepThroughContours);
         add(chckbxClass);
+        chckbxAddAutomatically.setVisible(false);
+        chckbxContourAssist.setVisible(false);
+        chckbxClass.setVisible(false);
+        chckbxShowOverlay.setVisible(false);
+        chckbxStepThroughContours.setVisible(false);
 
         // add options button for contour assist
         buttonOptions = new JButton("...");
@@ -490,6 +451,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         //btnExport.setIcon(new ImageIcon(imgIcon));
         btnExport.setToolTipText("Export current annotation");
         add(btnExport);
+        btnExport.setVisible(false);
 
         // create grouplayout structure of elements
         gl_panel = new GroupLayout(panel);
@@ -870,9 +832,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         nextROILabel = 100;
 
         // set default contour assist vars
-        trainedUNetModel = null;
-        curPredictionImage = null;
-        curPredictionImageName = null;
         curOrigImage = null;
         invertedROI = null;
         ROIpositionX = 0;
@@ -1052,34 +1011,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         if (logWindow != null) {
             logWindow.setVisible(true);
         }
-
-        // load model at startup to save time later
-        String modelJsonFile = modelFolder + File.separator + propModelJson; //"model_real.json";
-        String modelWeightsFile = modelFolder + File.separator + props.getProperty("modelWeightsFile"); //"model_real_weights.h5";
-        String modelFullFile = modelFolder + File.separator + props.getProperty("modelFullFile"); //"model_real.hdf5";
-        //trainedUNetModel=loadUNetModel(modelJsonFile,modelWeightsFile);
-
-        // load the model on a new thread in the background:
-        ModelLoader ModelLoaderObj = null;
-        File fx = new File(modelWeightsFile);
-        if (fx.exists() && !fx.isDirectory()) {
-            // both json config and weight h5 files exits
-            ModelLoaderObj = new ModelLoader(modelJsonFile, modelWeightsFile, this);
-        } else {
-            // cannot find weights file, try to use combined model file
-            fx = new File(modelFullFile);
-            if (fx.exists() && !fx.isDirectory()) {
-                ModelLoaderObj = new ModelLoader(null, modelFullFile, this);
-            } else {
-                IJ.log("Cannot find model file in plugin init");
-            }
-        }
-
-        Thread t = new Thread(ModelLoaderObj);
-        t.start();
-        // set the trained model to this annotator instance's own trainedUnetModel var in the ModelLoaderObj function instead
-        //trainedUNetModel=ModelLoaderObj.getLoadedModel();
-
         // for autosave
         startTime = System.currentTimeMillis();
     }
@@ -2010,32 +1941,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                     int countErode = 3; // # of nearest neighbours
                     int backgroundErode = 0; // background intensity
                     ((ByteProcessor) maskImageProc).dilate(countErode, backgroundErode);
-                    //((ByteProcessor)maskImageProc).dilate(countErode, backgroundErode);
                     maskImage.setProcessor(maskImageProc);
-                    //*/
-
-                    // this was working:
-                    curROI = runActiveContourFitting(maskImage, curROI, tmpBbox, acObjects.getImg());
-                    /*
-    				SnakeGUI_mymod snake_mymodObj=new SnakeGUI_mymod();
-    				int repeatDilate=2;
-    				maskImageProc=maskImage.getProcessor();
-    				for (int k=0; k<repeatDilate; k++) {
-    					((ByteProcessor)maskImageProc).dilate(countErode, backgroundErode);
-    				}
-    				maskImage.setProcessor(maskImageProc);
-    				ImagePlus customMask=snake_mymodObj.runSnake_MYMOD(imp,maskImage,tmpBbox);
-    				//ImagePlus customMask=snake_mymodObj.runSnake_MYMOD2(imp,maskImage,tmpBbox);
-					
-					customMask.show();
-    				ImageConverter converter=new ImageConverter(customMask);
-					converter.convertToGray8();
-					(new Thresholder()).run("skip");
-					curROI=ThresholdToSelection.run(customMask);
-					//maskImage=customMask;
-					//if (curROI!=null)
-					//	curROI.setLocation(ROIpositionX+curROI.getBounds.getX(),ROIpositionY+curROI.getBounds.getY());
-                     */
 
                     if (curROI != null) {
                         IJ.log("  >> ac ROI type: " + curROI.getTypeAsString());
@@ -3151,8 +3057,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             destNameRaw = opener.getFileName();
             defDir = destFolder;
             defFile = destNameRaw;
-            curPredictionImageName = defFile;
-            curPredictionImage = null;
             curOrigImage = null;
 
             //Create a tif to load!
@@ -5344,524 +5248,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         return minv;
     }
 
-    // contour assist using U-Net
-    Roi contourAssistUNet(ImagePlus imp, Roi initROI, double intensityThresh, int distanceThresh, String modelJsonFile, String modelWeightsFile) throws IOException, UnsupportedKerasConfigurationException, InvalidKerasConfigurationException {
-        //Roi assistedROI=(Roi) initROI.clone();
-        Roi assistedROI = null;
-        invertedROI = null;
-        ROIpositionX = 0;
-        ROIpositionY = 0;
-        IJ.log("  >> started assisting...");
-
-        int[] dimensions;
-        int width = 0;
-        int height = 0;
-        dimensions = imp.getDimensions();
-        width = dimensions[0];
-        height = dimensions[1];
-
-        // see if the image is RGB or not
-        int origImageType = imp.getType();
-        int maxOrigVal = 0;
-        boolean colourful = false;
-        switch (origImageType) {
-            case ImagePlus.GRAY8:
-                maxOrigVal = 255;
-                IJ.log("Image type: GRAY8");
-                break;
-            case ImagePlus.GRAY16:
-                maxOrigVal = 65535;
-                IJ.log("Image type: GRAY16");
-                break;
-            case ImagePlus.GRAY32:
-                maxOrigVal = (int) 1.0;
-                MessageDialog floatImgMsg11 = new MessageDialog(instance,
-                        "Error",
-                        "Current image is of type float in range [0,1].\nType not supported in suggestion mode.");
-                IJ.log("Image type: GRAY32");
-                return null;
-            case ImagePlus.COLOR_256:
-                // 8-bit indexed image
-                maxOrigVal = 255;
-                MessageDialog floatImgMsg22 = new MessageDialog(instance,
-                        "Error",
-                        "Current image is of type indexed colour image.\nType not supported in suggestion mode.");
-                IJ.log("Image type: COLOR_256");
-                return null;
-            //break;
-            case ImagePlus.COLOR_RGB:
-                // 32-bit RGB colour image
-                maxOrigVal = 255;
-                colourful = true;
-                IJ.log("Image type: COLOR_RGB");
-                break;
-            default:
-                maxOrigVal = 255;
-                IJ.log("Image type: default");
-                break;
-        }
-
-        // get the bounding box of the current roi
-        Rectangle initBbox = initROI.getBounds(); //initROI.setLocation(x,y,width,height); <-- after the new selection is ready!
-        // allow x pixel growth for the new suggested contour
-        double doubleDistanceThresh = distanceThreshVal;
-        //initROI=RoiEnlarger.enlarge(initROI,doubleDistanceThresh); // grow by distance thresh pixels
-        Roi tmpROI = RoiEnlarger.enlarge(initROI, doubleDistanceThresh); // grow by distance thresh pixels
-        Rectangle tmpBbox = tmpROI.getBounds();
-        IJ.log("tmpROI bounds: (" + String.valueOf(tmpBbox.getX()) + "," + String.valueOf(tmpBbox.getY()) + ") " + String.valueOf(tmpBbox.getWidth()) + "x" + String.valueOf(tmpBbox.getHeight()));
-
-        // load trained unet model
-        if (trainedUNetModel != null) {
-            // model already loaded
-        } else {
-            // load model
-
-            // model loading was here, moved to its own fcn now
-            trainedUNetModel = loadUNetModel(modelJsonFile, modelWeightsFile);
-
-            // check if model was loaded
-            if (trainedUNetModel == null) {
-                IJ.log("Failed to load U-Net model for Contour assist");
-                return null;
-            }
-
-        }
-
-        ImagePlus maskImage = null;
-
-        // check if this image has a valid prediction
-        if (!(curPredictionImage == null || curOrigImage == null)) {
-            // check current image for equality too
-            String[] imageTitles = WindowManager.getImageTitles();
-            for (String title : imageTitles) {
-                if (title.equals("title")) {
-                    // temp image, ignore it
-                    continue;
-                } else if (title.equals(defFile)) {
-                    // current image window
-                    //ImagePlus curImageTmp=WindowManager.getImage(defFile);
-                    ImagePlus curImageTmpIP = WindowManager.getImage(defFile);
-                    ImageProcessor curImageTmp = curImageTmpIP.getProcessor();
-                    if (!imageFromArgs) {
-                        // normal image
-                        //if (curImageTmp.getProcessor().equals(curOrigImage.getProcessor())) {
-                        if (curImageTmp.equals(curOrigImage)) {
-                            // it is the same, no changes applied, we can continue using the previous prediction on it
-                            IJ.log("  >> using previous predicted image");
-
-                            maskImage = new ImagePlus("title", curPredictionImage);
-                            maskImage.show();
-                        } else {
-                            IJ.log("  >> current image does not match the previous predicted original image");
-                        }
-                    } else {
-                        // stack
-                        if (curImageTmp.equals(curOrigImage)) {
-                            // it is the same, no changes applied, we can continue using the previous prediction on it
-                            IJ.log("  >> using previous predicted image");
-
-                            maskImage = new ImagePlus("title", curPredictionImage);
-                            maskImage.show();
-                        } else {
-                            IJ.log("  >> current image does not match the previous predicted original image");
-                            curPredictionImage = null;
-                            //return contourAssistUNet(imp,initROI,intensityThresh,distanceThresh,modelJsonFile,modelWeightsFile);
-                            return null;
-                        }
-                    }
-                }
-            }
-
-        } else {
-            // need to predict
-
-            // show a dialog informing the user that prediction is being executed and wait
-            // false to make in non-modal
-            HTMLDialog predictionStartedDialog = new HTMLDialog("Suggesting contour, please wait...", "Creating suggested contour, please wait...", false);
-
-            //curOrigImage=WindowManager.getImage(defFile);
-            ImagePlus curOrigImageIP = WindowManager.getImage(defFile);
-            curOrigImage = curOrigImageIP.getProcessor();
-            if (curOrigImage == null) {
-                MessageDialog curImageNotfound = new MessageDialog(instance,
-                        "Error",
-                        "Cannot find image");
-                return null;
-            }
-
-            // ------------------------------------------------------------------------------------
-            // original way of preparing input image for nd4j prediction with padding
-            /*
-			// image size must be multiplyable by 64 to avoid "illegal concatenation" error in nd4j
-			double wx=(double)width/(double)64;
-			double hx=(double)height/(double)64;
-			int widthx=((int) Math.ceil(wx))*64;
-			int heightx=((int) Math.ceil(hx))*64;
-			boolean need2pad=false;
-			if (widthx!=width || heightx!=height) {
-				// pad image to this size
-				need2pad=true;
-			}
-
-
-			// predict current image with loaded model
-			// function definition: public INDArray[] output(boolean train, INDArray... input);
-			INDArray[] inputs=new INDArray[1];
-
-			// initialize image with zeros
-			INDArray thisImage=null;
-			
-			if (need2pad)
-				thisImage=Nd4j.zeros(1,3,widthx,heightx); // padded row x col
-			else
-				thisImage=Nd4j.zeros(1,3,width,height); // row x col
-
-			int[] vals=new int[4];
-			double curv=0.0;
-			// fill image with values fetched from "imp"
-			for (int i=0; i<width; i++) {
-				for (int j=0; j<height; j++) {
-					if (colourful) {
-						// RGB image
-						vals=imp.getPixel(i,j);
-
-						for (int ch=0; ch<3; ch++) {
-							int[] idxs=new int[]{0,ch,i,j};
-							curv=(double)vals[ch];
-							thisImage.putScalar(idxs,curv);
-						}
-					} else {
-						// grayscale image
-						vals=imp.getPixel(i,j);
-
-	       				curv=(double)vals[0];
-						for (int ch=0; ch<3; ch++) {
-							int[] idxs=new int[]{0,ch,i,j};
-							thisImage.putScalar(idxs,curv);
-						}
-					}
-					
-				}
-			}
-			// image values filled
-			if (need2pad) {
-				// fill remaining rows and cols with zeros
-				curv=0.0;
-				for (int i=width; i<widthx; i++) {
-					for (int j=height; j<heightx; j++) {
-							// RGB image
-							// grayscale image
-							for (int ch=0; ch<3; ch++) {
-								int[] idxs=new int[]{0,ch,i,j};
-								thisImage.putScalar(idxs,curv);
-							}
-					}
-				}
-
-			}
-             */
-            // ------------------------------------------------------------------------------------
-            // new way of preparing input image for prediction with resizing
-            // predict current image with loaded model
-            // function definition: public INDArray[] output(boolean train, INDArray... input);
-            INDArray[] inputs = new INDArray[1];
-
-            // initialize image with zeros
-            INDArray thisImage = null;
-
-            String fileName = null;
-            if (!imageFromArgs) {
-                fileName = destFolder + File.separator + destNameRaw;
-            }
-            if (fileName == null) {
-                // how to read the file?
-
-                String importFolder = null;
-                if (exportRootFolderFromArgs != null) {
-                    importFolder = exportRootFolderFromArgs;
-                } else {
-                    IJ.log("Cannot find root data folder to read images from");
-                    return null;
-                }
-
-                // find file separator in the mask file name string array elements
-                String thisFileSep = "/";
-                int lastIdx = origImageFileNames[currentSliceIdx - 1].lastIndexOf(thisFileSep);
-                if (lastIdx < 0) {
-                    thisFileSep = "\\";
-                    lastIdx = origImageFileNames[currentSliceIdx - 1].lastIndexOf(thisFileSep);
-                }
-                if (lastIdx < 0) {
-                    IJ.log("Cannot find file separator character in the file path\n");
-                    return null;
-                }
-
-                int startidx = 0;
-                if (origImageFileNames[currentSliceIdx - 1].substring(0, 1).equals(thisFileSep)) {
-                    startidx = 1;
-                }
-
-                // construct output file name:
-                fileName = importFolder + File.separator + origImageFileNames[currentSliceIdx - 1].substring(startidx, origImageFileNames[currentSliceIdx - 1].lastIndexOf(thisFileSep)) + File.separator + origImageFileNames[currentSliceIdx - 1].substring(origImageFileNames[currentSliceIdx - 1].lastIndexOf(thisFileSep) + 1, origImageFileNames[currentSliceIdx - 1].length());
-
-                //IJ.log(">>> input image was parsed from arg, contour assist support not implemented yet");
-                File tmpFile = new File(fileName);
-                if (!tmpFile.exists() || tmpFile.isDirectory()) {
-                    IJ.log("Cannot load current slice image for prediction");
-                    return null;
-                }
-            }
-            INDArray arr2 = new NativeImageLoader().asMatrix(new File(fileName), false);
-            NativeImageLoader loader = new NativeImageLoader(arr2.shape()[1], arr2.shape()[2], 3, new ColorConversionTransform(COLOR_BGR2RGB));
-            arr2 = loader.asMatrix(new File(fileName), false);
-            thisImage = Nd4j.zeros(1, arr2.shape()[1], arr2.shape()[2], 3); // row x col
-            for (int i = 0; i < arr2.shape()[1]; i++) {
-                for (int j = 0; j < arr2.shape()[2]; j++) {
-                    for (int ch = 0; ch < 3; ch++) {
-                        int[] idxs;
-                        if (colourful) {
-                            idxs = new int[]{0, i, j, ch};
-                            thisImage.putScalar(idxs, arr2.getDouble(idxs));
-                        } else {
-                            idxs = new int[]{0, i, j};
-                            int[] idxs2 = new int[]{0, i, j, ch};
-                            thisImage.putScalar(idxs2, arr2.getDouble(idxs));
-                        }
-                    }
-                }
-            }
-
-            IJ.log("  >> input image prepared...");
-
-            // divide image by 255!!!!!!!!!!!!!!!
-            thisImage.divi(255);
-
-            // add image to "inputs" array
-            // orig way:
-            //inputs[0]=thisImage;
-            // new way:
-            INDArray size = Nd4j.createFromArray(new int[]{256, 256});
-            ResizeBicubic op = new ResizeBicubic(thisImage, size, false, false);
-            INDArray[] res = Nd4j.exec(op);
-            inputs[0] = res[0];
-
-            // debug:
-            IJ.log("  >> input image size: " + thisImage.size(0) + " x " + thisImage.size(1) + " x " + thisImage.size(2) + " x " + thisImage.size(3));
-            IJ.log("  >> input array size: " + inputs.length);
-
-            // expects rank 4 array with shape [miniBatchSize,layerInputDepth,inputHeight,inputWidth]
-            INDArray[] predictions = trainedUNetModel.output(inputs); //(false,inputs);
-            IJ.log("  >> prediction done...");
-            INDArray predictedImage = predictions[0];
-
-            // debug:
-            // show output
-            /*
-			int h4 = (int)predictedImage.size(2);
-	        int w4 = (int)predictedImage.size(3);
-			BufferedImage bi = new BufferedImage(h4, w4, BufferedImage.TYPE_BYTE_GRAY);
-			int[] ia = new int[1];
-	        
-	        for( int i=0; i<h4; i++ ){
-	            for( int j=0; j<w4; j++ ){
-	                int value = (int)(255 * predictedImage.getDouble(0, 0, i, j));
-	                ia[0] = value;
-	                bi.getRaster().setPixel(i,j,ia);
-	            }
-	        }
-					        
-	        ImagePlus debugimg=new ImagePlus("DL4J",bi);
-	        debugimg.show();
-             */
-            // TODO: create imageJ image from the prediction
-            // this is probably a 16-bit image
-            // -----------------------------------------------------------
-            // orig way:
-            /*
-			// create an empty output image
-			// / *
-			long lsize = (long)width*height;
-			int size = (int)lsize;
-	        if (size<0) {
-	        	IJ.log("0-sized image");
-	        	return null;
-	        }
-	        byte[] pixels;
-	        // * /
-	        short[] pixels2;
-	        //float[] pixels3;
-
-	        ImageProcessor maskImageProc=null;
-	        //ImagePlus maskImage=null;
-	        maskImage=null;
-	        pixels = new byte[size];
-	        pixels2 = new short[size];
-	        //pixels3 = new float[size];
-
-	        // it will be filled with black (0) values by default and hopefully isn't displayed in a window
-	        maskImageProc = new ShortProcessor(width, height, pixels2, null);
-	        //maskImageProc = new FloatProcessor(width, height, pixels3, null);
-	        
-	        maskImage = new ImagePlus("title", maskImageProc);
-	        maskImage.getProcessor().setMinAndMax(0, 255);
-	      	//maskImage.getProcessor().setMinAndMax(0, 65535); // 16-bit
-	        if (maskImage==null) {
-	        	IJ.log("could not create a new mask (2)");
-	        	return null;
-	        }
-
-	        //maskImage.getProcessor().setColor(255);
-			//maskImage.getProcessor().fill(initROI);
-
-
-			// -----
-			// debug:
-			//ImageProcessor predIm2showProc = new FloatProcessor(width, height, new float[size], null);
-			//predIm2showProc.setMinAndMax(0, 65535); // 16-bit
-			//IJ.log("********debug: prediction size: "+String.valueOf(predictions.length));
-			// -----
-
-
-			// fill image with predicted values
-			// threshold the prediction so we can convert it to roi later
-			for (int i=0; i<width; i++) {
-				for (int j=0; j<height; j++) {
-					curv=predictedImage.getDouble(0,0,i,j);
-					maskImage.getProcessor().putPixelValue(i,j,curv*255);
-					// debug:
-					//predIm2showProc.putPixelValue(i,j,curv);
-					if (curv>255/2)
-						maskImageProc.putPixelValue(i,j,255);
-					//else
-					//	maskImageProc.putPixelValue(i,j,0);
-				}
-			}
-             */
-            // -----------------------------------------------------------
-            // new way:
-            size = Nd4j.createFromArray(new int[]{(int) thisImage.shape()[1], (int) thisImage.shape()[2]});
-            ResizeBicubic op_back = new ResizeBicubic(predictedImage, size, false, false);
-            INDArray[] out_resized = Nd4j.exec(op_back);
-            BufferedImage bi = imageFromINDArray(out_resized[0]);
-            maskImage = new ImagePlus("title", bi);
-
-            IJ.log("  >> predicted image processed...");
-            maskImage.show();
-
-            if (predictionStartedDialog != null) {
-                predictionStartedDialog.dispose();
-            }
-
-            // store prediction image until this image is closed/ new image is opened
-            curPredictionImage = maskImage.getProcessor();
-            curPredictionImageName = defFile;
-
-            // -----
-            // debug:
-            //ImagePlus predIm2show=new ImagePlus("prediction",predIm2showProc);
-            //predIm2show.show();
-            //return null;
-            // ----
-        }
-        // -------- here we have a valid prediction image and file name
-
-        // crop initROI + distanceTresh pixels bbox of the predmask
-        ///*
-        maskImage.setRoi(tmpROI);
-        Resizer resizerObj = new Resizer();
-        resizerObj.run("crop");
-        Roi emptyRoi = null;
-        //maskImage.getProcessor().setColor(255);
-        //maskImage.getProcessor().fill(tmpROI.getInverse(maskImage));
-        maskImage.setRoi(emptyRoi);
-        //*/
-
-        ImageConverter converter = new ImageConverter(maskImage);
-        converter.convertToGray8();
-        (new Thresholder()).run("skip");
-
-        // see if the mask needs to be inverted:
-        if (checkIJMatrixCorners(maskImage)) {
-            // need to invert it
-            IJ.log("  >> need to invert mask: true");
-            maskImage.setProcessor(invertImage(maskImage.getProcessor()));
-            (new Thresholder()).run("skip");
-        }
-
-        // -------- active contour method starts here ------------
-        // moved to its own fcn
-        // after everything is done: the new binary image must be converted to selection (Roi) and displayed on the image
-        // create selection command, ThresholdToSelection class
-        Roi intermediateRoi = ThresholdToSelection.run(maskImage);
-        if (intermediateRoi != null) {
-            IJ.log("  >> orig ROI type: " + intermediateRoi.getTypeAsString());
-        }
-
-        // run active contour fitting:
-        // not here!
-        /*
-	   	assistedROI=runActiveContourFitting(maskImage,intermediateRoi,tmpBbox,imp);
-	    if (assistedROI!=null)
-			IJ.log("  >> ac ROI type: "+assistedROI.getTypeAsString());
-         */
-        // store objects needed to run active contour fitting for later
-        //acObjects=new ACobjectDump(maskImage,intermediateRoi,tmpBbox,imp);
-        acObjects = new ACobjectDump(new ImagePlus(maskImage.getTitle(), maskImage.getProcessor().duplicate()), intermediateRoi, tmpBbox, new ImagePlus(imp.getTitle(), imp.getProcessor().duplicate()));
-
-        // check if there is an output from ac as a roi
-        if (assistedROI == null || !(assistedROI.getType() == Roi.FREEROI || assistedROI.getType() == Roi.COMPOSITE || assistedROI.getType() == Roi.TRACED_ROI)) {
-            // failed to produce a better suggested contour with AC than we had with unet before, revert to it
-            IJ.log("Failed to create new contour with active contours, showing U-Net prediction");
-            //assistedROI=ThresholdToSelection.run(maskImage);
-            //postProcessAssistedROI(assistedROI,tmpBbox,maskImage,true,imp,true);
-            assistedROI = intermediateRoi;
-            assistedROI = postProcessAssistedROI(assistedROI, tmpBbox, maskImage, true, imp, true);
-            // also reset the inverted roi
-            //invertedROI=invertRoi(intermediateRoi,maskImage);
-            //invertedROI=(invertedROI instanceof ShapeRoi) ? createRoi((ShapeRoi)invertedROI) : invertedROI;
-            if (assistedROI == invertedROI) {
-                IJ.log("Failed to invert current roi (same)");
-            }
-            if (invertedROI == null) {
-                IJ.log("  null ROI on line #3822");
-            }
-        }
-
-        // roi positioning was done here, moved to its own fcn
-        Window curWindow = WindowManager.getWindow("title");
-        if (curWindow != null) {
-            // close image window
-            maskImage.changes = false;
-            maskImage.getWindow().close();
-        }
-        WindowManager.setCurrentWindow(imp.getWindow());
-        // set main imwindow var to the original image
-        //imWindow=WindowManager.getWindow(destNameRaw);
-        imp.getWindow().toFront();
-
-        return assistedROI;
-    }
-
-    private BufferedImage imageFromINDArray(INDArray array) {
-        long[] shape = array.shape();
-
-        int height = (int) shape[1];
-        int width = (int) shape[2];
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                int gray = (int) (255 * array.getDouble(0, y, x, 0));
-
-                // handle out of bounds pixel values
-                gray = Math.min(gray, 255);
-                gray = Math.max(gray, 0);
-
-                image.getRaster().setSample(x, y, 0, gray);
-            }
-        }
-        return image;
-    }
-
     // get the largest roi if multiple objects were detected on the mask
     Roi selectLargestROI(Roi ROI2check) {
         if (ROI2check.getType() != Roi.COMPOSITE) {
@@ -5973,291 +5359,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             }
         }
         return outArray;
-    }
-
-    // active contour fitting after contour suggestion step
-    public Roi runActiveContourFitting(ImagePlus maskImage, Roi intermediateRoi, Rectangle tmpBbox, ImagePlus imp) {
-
-        Roi assistedROI = null;
-
-        // show dialog that a calculation is running
-        HTMLDialog predictionStartedDialog2 = new HTMLDialog("Info", "Fitting suggested contour to object...", false);
-
-        // show the unet suggested contour on the image while processing continues
-        //Roi intermediateRoi=ThresholdToSelection.run(maskImage);
-        intermediateRoi = postProcessAssistedROI(intermediateRoi, tmpBbox, maskImage, false, imp, true);
-        imp.setRoi(intermediateRoi);
-        //maskImage.show();
-        WindowManager.setCurrentWindow(maskImage.getWindow());
-
-        // ---- use active contour (matlab implementation) to fit the contour to the object more precisely
-        Object[] result = null;
-        // this is the active contour class
-        runAC_Class snakeObj = null;
-
-        // runSnake2D is the fcn, params:
-        // 1: needed
-        // imageMatrix: original image (grayscale/RGB)
-        // points: initial contour points <-- collect these from the previous mask image
-        // method: ['basic','gvf'] --> use gvf
-        // []: iterations ("" means use default: 300/400 by method)
-        // []: gvf iterations ("" means use default: 600)
-        //result = snakeObj.runSnake2D(1,imageMatrix,points,method,"","");
-        // prepare inputs
-        /*
-		// original image as int matrix
-		int[][] imageMatrix=imp.getProcessor().getIntArray();
-		// convert to short
-		short[][] shortMatrix=new short[imageMatrix.length][imageMatrix[0].length];
-		for (int i=0; i<imageMatrix.length; i++) {
-			for (int j=0; j<imageMatrix[0].length; j++) {
-				shortMatrix[i][j]=(short)imageMatrix[i][j];
-			}
-		}
-         */
-        // contour point list as 2-by-points matrix
-        //double[][] pointsTemp=new double[2][5000];
-        int[] dimensionsBin;
-        int widthBin = 0;
-        int heightBin = 0;
-        dimensionsBin = maskImage.getDimensions();
-        widthBin = dimensionsBin[0];
-        heightBin = dimensionsBin[1];
-        long lsize2 = (long) widthBin * heightBin;
-        int size2 = (int) lsize2;
-        byte[] pixels222;
-        pixels222 = new byte[size2];
-
-        ///*
-        byte[] tmpPixels = (byte[]) maskImage.getProcessor().getPixelsCopy();
-        ByteProcessor maskBinary = new ByteProcessor(widthBin, heightBin, tmpPixels, null);
-        //*/
-
-        //short[] tmpPixels=(short[]) maskImage.getProcessor().getPixelsCopy();
-        //ImageProcessor maskBinary=new ShortProcessor(widthBin,heightBin,tmpPixels,null);
-        ImagePlus impBin = new ImagePlus("binarymask", maskBinary);
-
-        /*
-		maskBinary.invert(); // for unknown reason the image gets inverted, so we need to invert it again
-		maskBinary.outline();
-		maskBinary.skeletonize(); // to have truly 1-pixel-width outline
-         */
-        //impBin.show();
-        // get outline
-        // ---- this is only needed for the runSnake2D fcn ----
-        /*
-		maskBinary=(ByteProcessor) impBin.getProcessor();
-		//maskBinary=impBin.getProcessor();
-		ij.plugin.filter.Binary binaryObj=new ij.plugin.filter.Binary();
-		binaryObj.setup("outline",impBin);
-		binaryObj.run(maskBinary);
-		impBin.setProcessor(maskBinary);
-
-		maskBinary=(ByteProcessor) impBin.getProcessor();
-		//maskBinary=impBin.getProcessor();
-		binaryObj=new ij.plugin.filter.Binary();
-		binaryObj.setup("skel",impBin);
-		binaryObj.run(maskBinary);
-		impBin.setProcessor(maskBinary);
-         */
-        // ---- this is only needed for the runSnake2D fcn ----
-        // calculate indices for crop
-        int startX = (int) tmpBbox.getX();
-        int startY = (int) tmpBbox.getY();
-        int endX = (int) tmpBbox.getWidth();
-        int endY = (int) tmpBbox.getHeight();
-
-        // make sure the sizes match
-        IJ.log("bin:   " + String.valueOf(widthBin) + " x " + String.valueOf(heightBin));
-        IJ.log("image: " + String.valueOf(endX) + " x " + String.valueOf(endY));
-
-        // if the sizes dont match, return null
-        if (widthBin != endX || heightBin != endY) {
-            IJ.log("Size mismatch in processing, failure");
-            if (predictionStartedDialog2 != null) {
-                predictionStartedDialog2.dispose();
-            }
-            Roi emptyRoi = null;
-            imp.setRoi(emptyRoi);
-            return null;
-        }
-
-        int[][] imageMatrix = imp.getProcessor().getIntArray();
-        // convert to short
-        short[][] shortMatrix = new short[endX][endY];
-        for (int i = startX; i < endX; i++) {
-            for (int j = startY; j < endY; j++) {
-                shortMatrix[i][j] = (short) imageMatrix[i][j];
-            }
-        }
-
-        // new mask image as int matrix
-        int[][] imageMatrix2 = impBin.getProcessor().getIntArray();
-        // convert to short
-        short[][] shortMatrix2 = new short[imageMatrix2.length][imageMatrix2[0].length];
-        for (int i = 0; i < imageMatrix2.length; i++) {
-            for (int j = 0; j < imageMatrix2[0].length; j++) {
-                shortMatrix2[i][j] = (short) imageMatrix2[i][j];
-            }
-        }
-
-        // find generated skel movie frames and close them
-        Window curWindow = WindowManager.getWindow("Skel Movie");
-        if (curWindow != null) {
-            curWindow.dispose();
-        }
-
-
-        /*
-		int contourPointCount=0;
-		for (short i=0; i<widthBin; i++) {
-			for (short j=0; j<heightBin; j++) {
-				int curPixelVal=maskBinary.get(i,j);
-				if (curPixelVal>0) {
-					pointsTemp[0][contourPointCount]=i;
-					pointsTemp[1][contourPointCount]=j;
-					contourPointCount+=1;
-				}
-			}
-		}
-         */
-        // close temp mask windows
-        curWindow = WindowManager.getWindow("binarymask");
-        if (curWindow != null) {
-            impBin.changes = false;
-            impBin.getWindow().close();
-
-            curWindow = WindowManager.getWindow("binarymask");
-            if (curWindow != null) {
-                curWindow.dispose();
-            }
-        }
-
-        // only needed for runSnake2D
-        /*
-		double[][] points=new double[2][contourPointCount];
-		for (int k=0; k<2; k++) {
-			///*
-			//int[] tmpOrig=pointsTemp[k];
-			//int[] tmpNew=new int[tmpOrig.length];
-			//System.arrayCopy(tmpOrig,0,tmpNew,contourPointCount);
-			//points[k]=tmpNew;
-			//*
-			System.arraycopy(pointsTemp[k],0,points[k],0,contourPointCount);
-		}
-         */
-        String method = "GVF";
-        // use default iterations
-
-        IJ.log("  >> starting GVF...");
-        //IJ.log("toolbar color before runAC: "+Integer.toHexString(Toolbar.getForegroundColor().getRGB()));
-
-        try {
-            snakeObj = new runAC_Class();
-            //result = snakeObj.runSnake2D(1,imageMatrix,points,method,"","");
-            // this worked syntactically:
-            //result = snakeObj.runSnake2D(1,shortMatrix,transposeArray(points),method,"","");
-
-            // run simple ac method
-            int iterations = 200;
-            double smoothFactor = 0.5;
-
-            result = snakeObj.runAC(1, shortMatrix, shortMatrix2, iterations, smoothFactor);
-        } catch (MWException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-            IJ.log("  >> Exception: " + e.getMessage());
-            return null;
-        } catch (Exception e) {
-            e.printStackTrace();
-            IJ.log("  >> Exception: " + e.getMessage());
-            return null;
-        }
-        IJ.log("  >> done");
-        //IJ.log("toolbar color after runAC: "+Integer.toHexString(Toolbar.getForegroundColor().getRGB())); 
-        //System.out.println(result[0]);
-        MWLogicalArray matArray = (MWLogicalArray) result[0];
-
-        boolean[][] activeArrayBin = (boolean[][]) matArray.toArray();
-        int[][] activeArray = convert2intArray(activeArrayBin);
-
-        IJ.log("  >> preparing output image...");
-
-        // probably result[0] contains the output binary mask as an int[][] --> create imageproc from it
-        ByteProcessor activeBinary = new ByteProcessor(widthBin, heightBin, pixels222);
-        activeBinary.setBackgroundValue(0.0);
-
-        // check if the mask needs to be inverted
-        boolean need2invertMatrix = checkMatrixCorners(activeArray);
-        IJ.log("  >> need to invert matrix: " + String.valueOf(need2invertMatrix));
-
-        for (int i = 0; i < widthBin; i++) {
-            for (int j = 0; j < heightBin; j++) {
-                int activeVal = activeArray[i][j];
-                if (activeVal > 0 && !need2invertMatrix) {
-                    activeVal = 255;
-                } else {
-                    activeVal = 0;
-                }
-                activeBinary.set(i, j, activeVal);
-            }
-        }
-
-        ImagePlus impBinActive = new ImagePlus("activecontour", activeBinary);
-        impBinActive.show();
-        WindowManager.setCurrentWindow(impBinActive.getWindow());
-
-        IJ.log("  >> done");
-
-        // TODO:
-        // change maskImage to impBinActive a few lines below!!!!!!!!!
-        // ---- active contour fitting done
-        // after everything is done: the new binary image must be converted to selection (Roi) and displayed on the image
-        // create selection command, ThresholdToSelection class
-        //assistedROI=ThresholdToSelection.run(maskImage);
-        // run it on the new active contour image instead:
-        ImageConverter converter = new ImageConverter(impBinActive);
-        converter.convertToGray8();
-        (new Thresholder()).run("skip");
-
-        // see if the mask needs to be inverted:
-        if (checkIJMatrixCorners(impBinActive)) {
-            // need to invert it
-            IJ.log("  >> need to invert mask: true");
-            impBinActive.setProcessor(invertImage(impBinActive.getProcessor()));
-            (new Thresholder()).run("skip");
-        }
-
-        assistedROI = ThresholdToSelection.run(impBinActive);
-        if (assistedROI != null) {
-            //impBinActive.setRoi(assistedROI);
-            IJ.log("  >> ac contour created");
-            //assistedROI=postProcessAssistedROI(assistedROI,tmpBbox,impBinActive,true,imp,true);
-            assistedROI = postProcessAssistedROI(assistedROI, tmpBbox, maskImage, true, imp, true);
-        } else {
-            IJ.log("  >> ac contour is null");
-        }
-
-        // close active contour windows
-        ///*
-        curWindow = WindowManager.getWindow("activecontour");
-        if (curWindow != null) {
-            impBinActive.changes = false;
-            impBinActive.getWindow().close();
-
-            curWindow = WindowManager.getWindow("activecontour");
-            if (curWindow != null) {
-                curWindow.dispose();
-            }
-        }
-        //*/
-
-        // close the process running dialog box
-        if (predictionStartedDialog2 != null) {
-            predictionStartedDialog2.dispose();
-        }
-
-        return assistedROI;
     }
 
     public Roi postProcessAssistedROI(Roi assistedROI, Rectangle tmpBbox, ImagePlus maskImage, boolean closeMaskIm, ImagePlus imp, boolean storeRoiCoords) {
@@ -6656,145 +5757,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             need2invert = true;
         }
         return need2invert;
-    }
-
-
-    /*
-	public void selectLargestCC(ImagePlus mask){
-		ByteProcessor proc=null;
-		ByteProcessor out=new ByteProcessor(mask.getWidth(),mask.getHeight());
-		if (mask.getProcessor() !instanceof ByteProcessor) {
-			proc=(ByteProcessor)mask.getProcessor();
-		} else {
-			proc=mask.getProcessor();
-		}
-
-		int label=1;
-		for (int i=0; i<mask.getWidth(); i++) {
-			for (int j=0; j<mask.getHeight(); j++) {
-				if (mask.getPixelValue(i,j)>0) {
-					// check 4-neighbours
-					int n=0;
-					int ncol=-1;
-					if (mask.getPixelValue(i-1,j)>0){
-						n+=1;
-						ncol=out.getPixelValue(i-1,j);
-					} 
-					if (mask.getPixelValue(i,j-1)>0){
-						n+=1;
-						ncol=out.getPixelValue(i,j-1);
-					}
-					if (mask.getPixelValue(i+1,j)>0){
-						n+=1;
-						ncol=out.getPixelValue(i+1,j);
-					}
-					if (mask.getPixelValue(i,j+1)>0){
-						n+=1;
-						ncol=out.getPixelValue(i,j+1);
-					}
-					if (n>1){
-						// has 2+ pixel neighbours, keep it
-						
-						//if (out.getPixelValue(i,j)==label)
-						//	label+=1;
-						//
-						//out.set(i,j,ncol);
-						
-						if (out.getPixelValue(i,j)==ncol) {
-							out.set(i,j,label);
-						} else {
-							label+=1;
-							out.set(i,j,label);
-						}
-					} else {
-						out.set(i,j,0);
-					}
-				}
-			}
-		}
-	}
-     */
-    // load a unet model for the contour assist functionality
-    @SuppressWarnings("all")
-    public ComputationGraph loadUNetModel(String modelJsonFile, String modelWeightsFile) {
-
-        ComputationGraph trainedUNetModel = null;
-        // ---- for debugging nd4j ----
-        if (System.getProperties().containsKey(DYNAMIC_LOAD_CLASSPATH_PROPERTY)) {
-            IJ.log("System.getProperties().containsKey(DYNAMIC_LOAD_CLASSPATH_PROPERTY)");
-        } else {
-            IJ.log(">> NOT --- System.getProperties().containsKey(DYNAMIC_LOAD_CLASSPATH_PROPERTY)");
-        }
-
-        if (System.getenv().containsKey(DYNAMIC_LOAD_CLASSPATH)) {
-            IJ.log("System.getenv().containsKey(DYNAMIC_LOAD_CLASSPATH)");
-        } else {
-            IJ.log(">> NOT --- System.getenv().containsKey(DYNAMIC_LOAD_CLASSPATH)");
-        }
-        // ----------------------------
-
-        try {
-            if (modelWeightsFile == null) {
-                IJ.log("modelWeightsFile is null");
-            } else {
-
-                if (modelJsonFile == null) {
-                    // all saved model in a single .hdf5 file
-                    IJ.log("  >> importing from a single .hdf5 file...");
-                    File fx = new File(modelWeightsFile);
-                    if (!(fx.exists() && !fx.isDirectory())) {
-                        // file does not exist
-                        IJ.log("File " + modelWeightsFile + " does not exist");
-                    } else {
-                        trainedUNetModel = KerasModelImport.importKerasModelAndWeights(modelWeightsFile);
-                        IJ.log("  >> importing done...");
-                    }
-
-                } else {
-                    //val unet_model: ComputationGraph = KerasModelImport.importKerasModelAndWeights(modelJsonFile, modelWeightsFile);
-                    IJ.log("  >> importing from json config + weights .h5 files...");
-                    File fx = new File(modelJsonFile);
-                    File fy = new File(modelWeightsFile);
-                    if (!(fx.exists() && !fx.isDirectory()) || !(fy.exists() && !fy.isDirectory())) {
-                        // files do not exist
-                        IJ.log("File " + modelWeightsFile + " or " + modelJsonFile + " does not exist");
-                    } else {
-                        trainedUNetModel = KerasModelImport.importKerasModelAndWeights(modelJsonFile, modelWeightsFile, false);
-                        IJ.log("  >> importing done...");
-                    }
-
-                }
-                if (trainedUNetModel != null) {
-                    IJ.log("Successfully loaded pretrained U-Net model for contour correction");
-                }
-                IJ.log("  >> no exception in loading the model...");
-            }
-        } catch (IOException e) {
-            CharArrayWriter caw = new CharArrayWriter();
-            PrintWriter pw = new PrintWriter(caw);
-            e.printStackTrace(pw);
-            IJ.log(caw.toString());
-            IJ.showStatus("IOException thrown");
-        } catch (InvalidKerasConfigurationException e) {
-            CharArrayWriter caw = new CharArrayWriter();
-            PrintWriter pw = new PrintWriter(caw);
-            e.printStackTrace(pw);
-            IJ.log(caw.toString());
-            IJ.showStatus("InvalidKerasConfigurationException thrown");
-        } catch (UnsupportedKerasConfigurationException e) {
-            CharArrayWriter caw = new CharArrayWriter();
-            PrintWriter pw = new PrintWriter(caw);
-            e.printStackTrace(pw);
-            IJ.log(caw.toString());
-            IJ.showStatus("UnsupportedKerasConfigurationException thrown");
-        }
-
-        return trainedUNetModel;
-    }
-
-    // store the loaded model in the trainedUnetModel attribute of the plugin class
-    public void setTrainedModel(ComputationGraph loadedModel) {
-        this.trainedUNetModel = loadedModel;
     }
 
     // new frame for options when clicking on "..." button in the main frame
@@ -8856,108 +7818,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                     }
                 }
 
-                // check if contour assist checkbox is selected
-                if (contAssist) {
-                    if (inAssisting) {
-                        // do nothing on mouse release
-                    } else {
-
-                        IJ.log("Suggesting improved contour...");
-                        imp = WindowManager.getCurrentImage();
-                        if (imp == null) {
-                            IJ.log("No image opened");
-                            imp = WindowManager.getCurrentImage();
-                        }
-
-                        // get current selection as init contour
-                        curROI = imp.getRoi();
-                        if (curROI == null) {
-                            IJ.log("Empty ROI");
-                        } else {
-
-                            // can start suggestions
-                            // first start freehand selection tool for drawing --> done
-                            // on mouse release start contour correction -->
-                            // contour correction
-                            Roi newROI = null;
-
-                            // setting unet model paths
-                            String modelJsonFile = modelFolder + File.separator + props.getProperty("modelJsonFile"); //"model_real.json";
-                            String modelWeightsFile = modelFolder + File.separator + props.getProperty("modelWeightsFile"); //"model_real_weights.h5";
-                            String modelFullFile = modelFolder + File.separator + props.getProperty("modelFullFile"); //"model_real.hdf5";
-                            try {
-                                if (selectedCorrMethod == 0) {
-                                    // unet correction
-                                    // debug:
-                                    //IJ.log("  >> unet correction");
-                                    String jsonFileName = null;
-                                    String modelFileName = null;
-                                    File fy = new File(modelWeightsFile);
-                                    if (fy.exists() && !fy.isDirectory()) {
-                                        jsonFileName = modelJsonFile;
-                                        modelFileName = modelWeightsFile;
-                                    } else {
-                                        jsonFileName = null;
-                                        fy = new File(modelFullFile);
-                                        if (fy.exists() && !fy.isDirectory()) {
-                                            modelFileName = modelFullFile;
-                                        } else {
-                                            // model doesn't exist in the located folder
-                                            IJ.log("Cannot find model in Contour assist init");
-                                        }
-                                    }
-                                    newROI = contourAssistUNet(imp, curROI, intensityThreshVal, distanceThreshVal, jsonFileName, modelFileName);
-                                } else if (selectedCorrMethod == 1) {
-                                    // region growing
-                                    // debug:
-                                    //IJ.log("  >> classical correction");
-                                    newROI = contourAssist(imp, curROI, intensityThreshVal, distanceThreshVal);
-                                }
-
-                            } catch (Exception ex) {
-                                CharArrayWriter caw = new CharArrayWriter();
-                                PrintWriter pw = new PrintWriter(caw);
-                                ex.printStackTrace(pw);
-                                IJ.log(caw.toString());
-                                invertedROI = null;
-                            }
-                            if (newROI == null) {
-                                // failed, return
-                                IJ.log("Failed suggesting a better contour");
-                                invertedROI = null;
-                            } else {
-                                // display this contour
-                                imp.setRoi(newROI);
-
-                                // succeeded, nothing else to do
-                                IJ.log("Showing suggested contour");
-
-                                int prevCount = manager.getCount();
-
-                                // user can check it visually -->
-                                // set brush selection tool for contour modification -->
-                                curToolbar.setBrushSize(correctionBrushSize);
-                                //Prefs.set("toolbar.brush.size",correctionBrushSize);
-                                curToolbar.setTool("brush");
-
-                                // detect pressing "q" when they add the new contour -->
-                                // TODO
-                                if (!inAssisting) {
-                                    inAssisting = true;
-
-                                    // wait for keypress
-                                    // after key press:
-                                    // moved to key listener fcn
-                                } else {
-                                    // do nothing
-                                }
-
-                            }
-                        }
-
-                    }
-                }
-
                 // check if edit mode checkbox is selected
                 if (editMode && !startedEditing) {
                     if (inAssisting || addAuto) {
@@ -9276,49 +8136,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
         }
 
-        // previously working method that fails on multiscroll:
-        /*
-        public void mouseWheelMoved(MouseWheelEvent e) {
-        	int direction=e.getWheelRotation();
-        	//debug:
-        	//IJ.log("direction: "+String.valueOf(direction));
-        	int amount=0;
-        	int up=0;
-        	if (direction>0){
-        		amount=e.getScrollAmount();
-        		IJ.log("--Mouse wheel moved down "+String.valueOf(amount)); //next
-        	}
-        	else {
-        		amount=-e.getScrollAmount();
-        		IJ.log("--Mouse wheel moved up "+String.valueOf(amount)); //prev
-        		up=2;
-        	}
-
-        	// update currently opened roi manager in the manager list
-        	managerList.set(currentSliceIdx-1,manager);
-
-        	currentSliceIdx=imp.getCurrentSlice() + direction; //+ direction;
-        	//int tempSlice=imp.getCurrentSlice();
-        	if (imp!=null && imp.getStack().getSize()>1) {
-        		//currentSliceIdx=imp.getCurrentSlice();
-        		IJ.log("Set current slice to "+String.valueOf(currentSliceIdx));
-        		if (currentSliceIdx>=1 && currentSliceIdx<=imp.getStack().getSize()) {
-	        		// display the roi set corresponding to this slice
-	        		imp.setPosition(1, currentSliceIdx, 1);
-	        		updateROImanager(managerList.get(currentSliceIdx-1),showCnt); // also display the rois if checked
-	        		imp.setPosition(1, currentSliceIdx-1+up, 1);
-	        	} else {
-	        		IJ.log("no more slices to scroll");
-	        		if (currentSliceIdx<1){
-	        			currentSliceIdx=1;
-	        		} else if (currentSliceIdx>imp.getStack().getSize()) {
-	        			currentSliceIdx=imp.getStack().getSize();
-	        		}
-
-	        	}
-        	}
-        }
-         */
         // execute functions bound to buttons in the main window:
         // open, load, save, overlay, prev/next
         void runCommand(String command, ImagePlus imp) {
@@ -9377,6 +8194,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 loadROIs();
             } // OVERLAY ---------------------------
             else if (command.equals("Delete Cell")) {
+                if(manager != null)
+                    manager.runCommand("Delete");
                saveROIs(true);
             } // COLOURS ------------------------------------------------
             else if (command.equals("Colours")) {
@@ -9685,36 +8504,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         }
 
     } // ACobjectDump class
-
-    // inner class for loading the unet model
-    public class ModelLoader implements Runnable {
-
-        private String modelJson;
-        private String modelWeights;
-        private ComputationGraph loadedModel;
-        private Annotator_MainFrameNew annotatorJinstance;
-
-        public ModelLoader(String modelJson, String modelWeights, Annotator_MainFrameNew annotInst) {
-            this.modelJson = modelJson;
-            this.modelWeights = modelWeights;
-            this.loadedModel = null;
-            this.annotatorJinstance = annotInst;
-        }
-
-        // load the model
-        public void run() {
-            this.loadedModel = loadUNetModel(this.modelJson, this.modelWeights);
-            // check if model was loaded
-            if (this.loadedModel == null) {
-                IJ.log("Failed to load U-Net model in ModelLoader");
-            }
-            this.annotatorJinstance.setTrainedModel(this.loadedModel);
-        }
-
-        public ComputationGraph getLoadedModel() {
-            return this.loadedModel;
-        }
-    } // ModelLoader class
 
     // inner class for storing config vars in config file
     public class AnnotatorProperties {
@@ -10078,23 +8867,25 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             int nextSliceIdx = imp.getCurrentSlice();
             IJ.log("Loading Slice index: " + String.valueOf(nextSliceIdx));
             boolean isSliceLoaded = false;
-            int curROInum = manager.getCount();
-            String loaded_slice_id = "";
-            for (int r = 0; r < curROInum; r++) {
-                loaded_slice_id = manager.getName(r).split("_", 0)[0];
-                if (loaded_slice_id.equals(String.valueOf(nextSliceIdx))) {
-                    isSliceLoaded = true;
-                    break;
+            if (manager != null) {
+                int curROInum = manager.getCount();
+                String loaded_slice_id = "";
+                for (int r = 0; r < curROInum; r++) {
+                    loaded_slice_id = manager.getName(r).split("_", 0)[0];
+                    if (loaded_slice_id.equals(String.valueOf(nextSliceIdx))) {
+                        isSliceLoaded = true;
+                        break;
+                    }
                 }
-            }
-            if (!isSliceLoaded) {
-                if (curROInum > 0 && NumberUtils.isDigits(loaded_slice_id)) {
-                    saveROIs(false, Integer.parseInt(loaded_slice_id));
+                if (!isSliceLoaded) {
+                    if (curROInum > 0 && NumberUtils.isDigits(loaded_slice_id)) {
+                        saveROIs(false, Integer.parseInt(loaded_slice_id));
+                    }
+                    manager.reset();
+                    String loadedROIfolder = destFolder + File.separator + "stardist_rois";
+                    String loadedROIname = destNameRaw.substring(0, destNameRaw.lastIndexOf('.')) + ".label_" + String.valueOf(nextSliceIdx) + ".zip";
+                    loadROIs(loadedROIfolder, loadedROIname);
                 }
-                manager.reset();
-                String loadedROIfolder = destFolder + File.separator + "stardist_rois";
-                String loadedROIname = destNameRaw.substring(0, destNameRaw.lastIndexOf('.')) + ".label_" + String.valueOf(nextSliceIdx) + ".zip";
-                loadROIs(loadedROIfolder, loadedROIname);
             }
         }
 
@@ -10124,7 +8915,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                     currentSliceIdx = tmpCurSliceIdx;
                     IJ.log("Set current slice to " + String.valueOf(currentSliceIdx) + "\t\t|\t(" + String.valueOf(prevSliceIdx) + ")");
 
-                    curPredictionImage = null;
                     curOrigImage = imp.getStack().getProcessor(currentSliceIdx);
 
                 } else {

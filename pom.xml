@@ -15,7 +15,7 @@
   <!-- ANNOTATORJ -->
   <groupId>org.biomag</groupId>
   <artifactId>annotator_Project</artifactId>
-  <version>0.0.7a</version>
+  <version>1.0.0</version>
   <packaging>jar</packaging>
   
   <name>annotator_Project</name>
@@ -134,12 +134,6 @@
   <!-- DEPENDENCIES -->
   <dependencies>
     
-    <!-- HDF5 -->
-    <dependency>
-      <groupId>org.bytedeco</groupId>
-      <artifactId>hdf5-platform</artifactId>
-      <version>${hdf5.version}-${javacpp.version}</version>
-    </dependency>
     
   	<!-- JUNIT -->
     <dependency>
@@ -149,41 +143,6 @@
       <scope>test</scope>
     </dependency>
     
-    <!-- DL4J, ND4J dependencies -->
-    <dependency>
-    	<groupId>org.deeplearning4j</groupId>
-    	<artifactId>deeplearning4j-core</artifactId>
-    	<version>${dl4j.version}</version>
-    </dependency>
-
-    <dependency>
-    	<groupId>org.nd4j</groupId>
-    	<!-- <artifactId>nd4j-native</artifactId> --><!-- for CPU only on current OS-->
-    	<artifactId>nd4j-native-platform</artifactId><!-- for CPU + all OS jars--> <!-- <artifactId>nd4j-native-platform</artifactId> -->
-    	<version>${nd4j.version}</version>
-    	<!-- <artifactId>nd4j-cuda-9.2-platform</artifactId> --><!-- for GPU -->
-    	<!-- <version>${nd4j.version}</version> -->
-    </dependency>
-    <!-- 
-    <dependency>
-		<groupId>org.deeplearning4j</groupId>
-		<artifactId>deeplearning4j-cuda-9.2</artifactId>
-		<version>1.0.0-beta4</version>
-	</dependency>
-	 -->
-    
-    <dependency>
-    	<groupId>org.datavec</groupId>
-    	<artifactId>datavec-api</artifactId>
-    	<version>${dl4j.version}</version>
-    </dependency>
-    
-	<!-- additional dependencies -->
-    <dependency>
-    	<groupId>org.bytedeco</groupId>
-    	<artifactId>javacpp</artifactId>
-    	<version>${javacpp.version}</version> <!-- <version>1.5.1</version> -->
-    </dependency>
     <dependency>
     	<groupId>org.slf4j</groupId>
     	<artifactId>slf4j-api</artifactId>
@@ -196,25 +155,9 @@
     </dependency>
     
     <dependency>
-    	<groupId>org.bytedeco</groupId> <!-- <groupId>org.bytedeco.javacpp-presets</groupId> -->
-    	<artifactId>openblas</artifactId>
-    	<version>${openblas.version}-${javacpp.version}</version> <!-- <version>0.3.6-1.5.1</version> --> <!-- <version>0.3.5-1.4.4</version> --> <!-- this doesnt exist-->
-    </dependency>
-    
-    <dependency>
     	<groupId>org.slf4j</groupId>
     	<artifactId>log4j-over-slf4j</artifactId>
     	<version>1.7.27</version>
-    </dependency>
-    <dependency>
-    	<groupId>org.bytedeco.javacpp-presets</groupId>
-    	<artifactId>cuda</artifactId>
-    	<version>9.0-7.0-1.4.1</version>
-    </dependency>
-    <dependency>
-    	<groupId>org.nd4j</groupId>
-    	<artifactId>jackson</artifactId>
-    	<version>${nd4j.version}</version>
     </dependency>
     
     <dependency>
@@ -222,45 +165,7 @@
     	<artifactId>commons-lang3</artifactId>
     	<version>3.9</version>
     </dependency>
-    <dependency>
-    	<groupId>org.nd4j</groupId>
-    	<artifactId>nd4j-api</artifactId>
-    	<version>${nd4j.version}</version>
-    </dependency>
     
-    
-    <!-- nd4j shade dependecy -->
-    <!-- 
-    <dependency>
-  		<groupId>org.nd4j</groupId>
-  		<artifactId>nd4j-shade</artifactId>
- 		<version>${nd4j.version}</version>
-	</dependency>
-	 -->
-    
-    <!-- ImageJ dependencies -->
-    <!-- 
-    <dependency>
-    	<groupId>net.imagej</groupId>
-    	<artifactId>pom-imagej</artifactId>
-    	<version>17.0.0</version>
-    	<type>pom</type>
-    	<exclusions>
-    		<exclusion>
-    			<groupId>io.scif</groupId>
-    			<artifactId>scifio-hdf5</artifactId>
-    		</exclusion>
-    		<exclusion>
-    			<groupId>sc.fiji</groupId>
-        		<artifactId>HDF5_Vibez</artifactId>
-    		</exclusion>
-    		<exclusion>
-    			<groupId>cisd</groupId>
-        		<artifactId>jhdf5</artifactId>
-    		</exclusion>
-    	</exclusions>
-    </dependency>
-     -->
     <dependency>
     	<groupId>net.imagej</groupId>
     	<artifactId>ij</artifactId>
@@ -280,49 +185,6 @@
     		</exclusion>
     	</exclusions>
     </dependency>
-    
-    
-    <!-- matlab active contour dependencies -->
-    <dependency>
-    	<groupId>com.mathworks.toolbox</groupId>
-    	<artifactId>javabuilder</artifactId>
-    	<version>9.2.0.538062</version>
-    	<type>jar</type>
-    	<!-- <file></file> -->
-    </dependency>
-    <!-- 
-    <dependency>
-    	<groupId>com.mathworks.fileexchange</groupId>
-    	<artifactId>runSnake2D</artifactId>
-    	<version>1.0</version>
-    	<type>jar</type>
-    </dependency>
-     -->
-    <dependency>
-    	<groupId>com.mathworks</groupId>
-    	<artifactId>runAC</artifactId>
-    	<version>1.0</version>
-    	<type>jar</type>
-    	<!-- <file></file> -->
-    </dependency>
-<!--    <dependency>
-        <groupId>org.janelia.simview</groupId>
-        <artifactId>klb</artifactId>
-        <version>0.3.6</version>
-    	<type>jar</type>
-    </dependency>
-    <dependency>
-        <groupId>net.imagej</groupId>
-        <artifactId>imagej-common</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>net.imglib2</groupId>
-        <artifactId>imglib2</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>io.scif</groupId>
-        <artifactId>scifio</artifactId>
-    </dependency>-->
   </dependencies>
   
   
