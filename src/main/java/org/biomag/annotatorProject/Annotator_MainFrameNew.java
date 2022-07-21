@@ -326,7 +326,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         instance = this;
         addKeyListener(IJ.getInstance());
 
-        instance.setTitle("AnnotatorJ");
+        instance.setTitle("AnnotatorJ 1.1");
 
         // create panel for every component
         setLayout(new FlowLayout());
@@ -410,7 +410,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         add(chckbxShowOverlay);
         add(chckbxStepThroughContours);
         add(chckbxClass);
-        chckbxAddAutomatically.setVisible(false);
+        chckbxAddAutomatically.setVisible(true);
         chckbxContourAssist.setVisible(false);
         chckbxClass.setVisible(false);
         chckbxShowOverlay.setVisible(false);
@@ -2812,7 +2812,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 if (manager.getCount() != 0) {
                     IJ.log("  >> starting save...");
                     // save using a separate fcn instead:
-                    saveROIs(true);
+                    saveROIs(false);
 
                     IJ.log("in close confirm after save finished");
                 }
@@ -3226,6 +3226,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
         // initialize image vars
         imp = WindowManager.getCurrentImage();
+        currentSliceIdx = -1;
         //ip = imp.getProcessor();
         //IJ.showStatus(command + "...");
         startTime = System.currentTimeMillis();
@@ -3732,7 +3733,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         imp = WindowManager.getCurrentImage();
         int nextSliceIdx = imp.getCurrentSlice();
         saveROIs(deleteCell, nextSliceIdx);
-        nextROILabel = nextROILabel + 1;
+        if(!deleteCell)
+            nextROILabel = nextROILabel + 1;
     }
 
     public void saveROIs(boolean deleteCell, int nextSliceIdx) {
@@ -3762,26 +3764,36 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
             //Save the current ROI as a temp file
             String outputFileName = loadedROIfolder + File.separator + "test.zip";
-            manager.runCommand("Save", outputFileName);
+            File prevROIFile = new File(loadedROIfolder + File.separator + loadedROIname);
+            if(manager.getCount()>0) //If some ROIs still remain to be saved
+            {
+                manager.runCommand("Save", outputFileName);
+                // Load current version of ROI zip and extract the labels 
+                zipFile = new ZipFile(outputFileName);
+                zipEntries = zipFile.entries();
+                while (zipEntries.hasMoreElements()) {
+                    String fname = ((ZipEntry) zipEntries.nextElement()).getName();
+                    String labelIdx = fname.split("[.]")[0].split("_")[1];
+                    currLabels.add(labelIdx);
+                }
+                zipFile.close();
 
-            // Load current version of ROI zip and extract the labels 
-            zipFile = new ZipFile(outputFileName);
-            zipEntries = zipFile.entries();
-            while (zipEntries.hasMoreElements()) {
-                String fname = ((ZipEntry) zipEntries.nextElement()).getName();
-                String labelIdx = fname.split("[.]")[0].split("_")[1];
-                currLabels.add(labelIdx);
+                //Delete the old ROI zip and rename the new file 
+                File sourceFile = new File(outputFileName);
+                //Delete the old ROI zip file
+                if (prevROIFile.delete()) {
+                    IJ.log("Deleting old ROI zip...");
+                }
+                sourceFile.renameTo(prevROIFile);
             }
-            zipFile.close();
-
-            //Delete the old ROI zip and rename the new file 
-            File destFile = new File(loadedROIfolder + File.separator + loadedROIname);
-            File sourceFile = new File(outputFileName);
-            if (destFile.delete()) {
-                IJ.log("Deleting old ROI zip...");
+            else{
+                //Delete the old ROI zip file
+                if (prevROIFile.delete()) {
+                    IJ.log("Deleting old ROI zip...");
+                }
             }
-            sourceFile.renameTo(destFile);
 
+            
             //Delete ROI label from all frames, deleting the whole cell!
             if(deleteCell){
                 //Produce the list of deleted labels
@@ -7760,19 +7772,10 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                         IJ.log("Empty ROI");
                     } else {
                         // add the ROI to the list:
-                        //manager.addRoi(curROI);
-
-                        // name the new roi by its number in the list:
-                        int lastNumber = 0;
-                        int prevROIcount = manager.getCount();
-                        if (prevROIcount > 0) {
-                            String lastName = manager.getRoi(prevROIcount - 1).getName();
-                            lastNumber = Integer.parseInt(lastName);
-                        } else {
-                            // no rois yet, use 0
-                        }
-
-                        String curROIname = String.format("%04d", lastNumber + 1);
+                        
+                        int sliceIdx = imp.getCurrentSlice();
+                        String curROIname = String.valueOf(sliceIdx) + "_" + String.valueOf(nextROILabel);
+                        curROI.setName(curROIname);
 
                         if (saveAnnotTimes) {
                             // measure time
@@ -7782,9 +7785,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                             annotTimes.setValue("time", annotCount, curTime);
                             annotCount += 1;
                         }
-
-                        //manager.add(curROI,prevROIcount+1);
-                        curROI.setName(curROIname);
 
                         //imp.setRoi(curROI);	
                         // this was working before:
@@ -8185,7 +8185,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 // open class name selector dialog box
                 // create dest folder with class name
                 // save the ROI.zip there
-                saveROIs(true);
+                saveROIs(false);
                 //saveData();
             } // LOAD --------------------------------
             else if (command.equals("Load")) {
@@ -8881,6 +8881,11 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                     if (curROInum > 0 && NumberUtils.isDigits(loaded_slice_id)) {
                         saveROIs(false, Integer.parseInt(loaded_slice_id));
                     }
+                    else if (curROInum==0 && currentSliceIdx != -1) //All the ROIs have been deleted!
+                    {
+                        saveROIs(false, currentSliceIdx);
+                    }
+                    currentSliceIdx = nextSliceIdx;
                     manager.reset();
                     String loadedROIfolder = destFolder + File.separator + "stardist_rois";
                     String loadedROIname = destNameRaw.substring(0, destNameRaw.lastIndexOf('.')) + ".label_" + String.valueOf(nextSliceIdx) + ".zip";
