@@ -43,7 +43,7 @@ import java.awt.Color;
 import java.awt.Button;
 import javax.swing.ButtonGroup;
 import javax.swing.DefaultListModel;
-
+import java.util.Collections;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -3067,9 +3067,9 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                     String cmdFile = "";
                     String os_str = System.getProperty("os.name");
                     if (os_str.compareTo("Windows 10") == 0) {
-                        cmdFile = "cmd.exe /c klb2tif.bat " + destFolder + File.separator + destNameRaw;
+                        cmdFile = "cmd.exe /c klb2tif.bat \"" + destFolder + File.separator + destNameRaw + "\"";
                     } else {
-                        cmdFile = "./klb2tif.sh " + destFolder + File.separator + destNameRaw;
+                        cmdFile = "./klb2tif.sh \"" + destFolder + File.separator + destNameRaw + "\"";
                     }
 
                     Process process;
@@ -3134,6 +3134,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             }
 
             // find current file in the list
+            Collections.sort(curFileList);  
             curFileIdx = -1;
             String destNameNoExt = destNameRaw.substring(0, destNameRaw.lastIndexOf('.'));
             for (int i = 0; i < curFileList.size(); i++) {
@@ -8190,12 +8191,14 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             } // LOAD --------------------------------
             else if (command.equals("Load")) {
                 // loads a previous annotation to the roi list
-
                 loadROIs();
             } // OVERLAY ---------------------------
             else if (command.equals("Delete Cell")) {
-                if(manager != null)
+                int selectedRoiIndex  = manager.getSelectedIndex();
+                if(manager != null && selectedRoiIndex != -1)
+                {
                     manager.runCommand("Delete");
+                }
                saveROIs(true);
             } // COLOURS ------------------------------------------------
             else if (command.equals("Colours")) {
