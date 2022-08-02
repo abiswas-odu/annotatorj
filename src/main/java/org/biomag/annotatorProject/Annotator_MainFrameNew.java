@@ -326,7 +326,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         instance = this;
         addKeyListener(IJ.getInstance());
 
-        instance.setTitle("AnnotatorJ 1.1");
+        instance.setTitle("AnnotatorJ 1.2");
 
         // create panel for every component
         setLayout(new FlowLayout());
@@ -8198,8 +8198,12 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 if(manager != null && selectedRoiIndex != -1)
                 {
                     manager.runCommand("Delete");
+                    saveROIs(true);
                 }
-               saveROIs(true);
+                else{
+                    JOptionPane.showMessageDialog(null, "No ROI selected for Delete.");
+                }
+               
             } // COLOURS ------------------------------------------------
             else if (command.equals("Colours")) {
 
