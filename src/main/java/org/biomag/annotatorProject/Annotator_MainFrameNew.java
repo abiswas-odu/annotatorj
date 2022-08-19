@@ -152,7 +152,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
     // stepping through image list vars
     private String defDir;
     private String defFile;
-    private String defImageJDir;
     private ArrayList<String> curFileList;
     private int curFileIdx;
     private boolean stepping;
@@ -326,7 +325,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         instance = this;
         addKeyListener(IJ.getInstance());
 
-        instance.setTitle("AnnotatorJ 1.2");
+        instance.setTitle("AnnotatorJ 1.4");
 
         // create panel for every component
         setLayout(new FlowLayout());
@@ -356,7 +355,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         btnOverlay = new JButton("Delete Cell");
         btnOverlay.addActionListener(this);
         btnOverlay.addKeyListener(IJ.getInstance());
-        btnOverlay.setToolTipText("Load a different annotation's contours as overlay");
+        btnOverlay.setToolTipText("Delete all the labels with the same ID across sclices.");
         add(btnOverlay);
 
         // colour choosing options
@@ -417,8 +416,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         chckbxStepThroughContours.setVisible(false);
 
         // add options button for contour assist
-        buttonOptions = new JButton("...");
-        buttonOptions.setToolTipText("Show options");
+        buttonOptions = new JButton("Gen. Mask");
+        buttonOptions.setToolTipText("Generate Mask");
         buttonOptions.addActionListener(this);
         buttonOptions.addKeyListener(IJ.getInstance());
         add(buttonOptions);
@@ -441,17 +440,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         buttonNext.setToolTipText("Open next image in folder");
         add(buttonNext);
         buttonNext.setEnabled(false);
-
-        // add extra export button to open the exporter
-        JButton btnExport = new JButton();//"EXPORT");
-        btnExport.setText("[^]");
-        btnExport.addActionListener(this);
-        btnExport.addKeyListener(IJ.getInstance());
-        //Image imgIcon = ImageIO.read(getClass().getResource("smalljavaexport.gif"));
-        //btnExport.setIcon(new ImageIcon(imgIcon));
-        btnExport.setToolTipText("Export current annotation");
-        add(btnExport);
-        btnExport.setVisible(false);
 
         // create grouplayout structure of elements
         gl_panel = new GroupLayout(panel);
@@ -483,20 +471,14 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                                                                                 .addComponent(buttonNext))
                                                                         .addComponent(chckbxStepThroughContours))
                                                                 .addPreferredGap(ComponentPlacement.RELATED, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                                                .addComponent(btnExport)
-                                                                .addPreferredGap(ComponentPlacement.RELATED)
                                                                 .addGroup(gl_panel.createParallelGroup(Alignment.TRAILING, false)
                                                                         .addComponent(btnSave, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                                                         .addComponent(btnLoad, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                                                         .addComponent(btnOpen, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 75, Short.MAX_VALUE)
                                                                         .addComponent(btnOverlay, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                                                        .addComponent(buttonOptions, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                                                         .addComponent(btnColours))))
-                                                .addGap(10))
-                                        .addGroup(gl_panel.createSequentialGroup()
-                                                .addComponent(chckbxClass)
-                                                .addPreferredGap(ComponentPlacement.RELATED, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                                .addComponent(buttonOptions)
-                                                .addGap(26)))
+                                                .addGap(10)))
                                 .addGap(0, 0, Short.MAX_VALUE))
         );
         gl_panel.setVerticalGroup(
@@ -523,17 +505,15 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                                                 .addPreferredGap(ComponentPlacement.RELATED)
                                                 .addComponent(btnLoad)
                                                 .addPreferredGap(ComponentPlacement.RELATED)
-                                                .addGroup(gl_panel.createParallelGroup(Alignment.TRAILING, false)
-                                                        .addComponent(btnExport, 0, 0, Short.MAX_VALUE)
-                                                        .addComponent(btnSave, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                                .addComponent(btnSave)
                                                 .addPreferredGap(ComponentPlacement.RELATED)
-                                                .addComponent(btnOverlay)))
+                                                .addComponent(btnOverlay)
+                                                .addPreferredGap(ComponentPlacement.RELATED)
+                                                .addComponent(buttonOptions)))
                                 .addPreferredGap(ComponentPlacement.RELATED)
                                 .addComponent(chckbxStepThroughContours)
                                 .addGroup(gl_panel.createParallelGroup(Alignment.LEADING)
                                         .addGroup(gl_panel.createSequentialGroup()
-                                                .addPreferredGap(ComponentPlacement.RELATED, 20, Short.MAX_VALUE)
-                                                .addComponent(buttonOptions, GroupLayout.PREFERRED_SIZE, 25, GroupLayout.PREFERRED_SIZE)
                                                 .addPreferredGap(ComponentPlacement.UNRELATED)
                                                 .addGroup(gl_panel.createParallelGroup(Alignment.TRAILING)
                                                         .addGroup(gl_panel.createParallelGroup(Alignment.BASELINE)
@@ -542,10 +522,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                                                         .addGroup(gl_panel.createParallelGroup(Alignment.BASELINE)
                                                                 .addComponent(buttonPrev)
                                                                 .addComponent(lblCurrentFile)))
-                                                .addContainerGap())
-                                        .addGroup(gl_panel.createSequentialGroup()
-                                                .addPreferredGap(ComponentPlacement.RELATED)
-                                                .addComponent(chckbxClass)
                                                 .addContainerGap())))
         );
         panel.setLayout(gl_panel);
@@ -620,8 +596,23 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
         // default image folder: ImageJ last image folder
         defFile = null;
-        defImageJDir = IJ.getDirectory("default");
-        defDir = defImageJDir;
+        defDir = IJ.getDirectory("default");
+        
+        BufferedReader reader;
+        try {
+            File file = new File("last_path.txt");
+            if(file.exists()){
+                reader = new BufferedReader(new FileReader(file));
+                String line = reader.readLine();
+                if(line != null) {
+                    defDir = line;
+                }		
+                reader.close();
+            }
+        } catch (IOException e) {
+                e.printStackTrace();
+        }
+        
 
         // empty image list
         curFileList = null; //new String[0];
@@ -680,9 +671,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         // set brush sizes
         correctionBrushSize = Integer.parseInt(props.getProperty("contourAssistBrushsize"));
         semanticBrushSize = Integer.parseInt(props.getProperty("semanticBrushSize"));
-
-        //buttonOptions.setVisible(false);
-        buttonOptions.setEnabled(false);
 
         // see if the model folder was found
         // if not, pop up a dialog window
@@ -2984,6 +2972,40 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         }
         return out;
     }
+    
+    // ---------------------
+    // generate the mask from ROI labels
+    // ---------------------
+    public void genMask(Runner runnerInstance) {
+        
+        String maskFileName = "";
+        try {
+            String cmdFile = "";
+            String os_str = System.getProperty("os.name");
+            if (os_str.compareTo("Windows 10") == 0) {
+                cmdFile = "cmd.exe /c gen_mask.bat \"" + destFolder + File.separator + destNameRaw + "\"";
+            } else {
+                cmdFile = destFolder + File.separator + destNameRaw;
+                cmdFile = cmdFile.replace(" ", "\\ ");
+                cmdFile = "./gen_mask.sh " + cmdFile;
+            }
+
+            Process process;
+            process = Runtime.getRuntime().exec(cmdFile);
+            int exitVal = process.waitFor();
+            if (exitVal == 0) {
+                maskFileName = destNameRaw.substring(0, destNameRaw.lastIndexOf('.')) + "_SegmentationCorrected.klb";
+            } else {
+                System.out.println("Failed to generate mask from ROIs. Try using ROI convertor.");
+                throw new IOException("Failed to generate mask from ROIs. Try using ROI convertor.");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        IJ.log("Mask file generated: " + maskFileName);
+    }
 
     // ---------------------
     // open a new image fcn
@@ -3053,11 +3075,20 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 IJ.log("canceled file open");
                 return;
             }
+            
             destFolder = opener.getDirectory();
             destNameRaw = opener.getFileName();
             defDir = destFolder;
             defFile = destNameRaw;
             curOrigImage = null;
+            
+            try{
+                BufferedWriter bw = new BufferedWriter(new FileWriter("last_path.txt"));
+                bw.write(destFolder);
+                bw.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
             //Create a tif to load!
             boolean isKLBFile = false;
@@ -3069,7 +3100,9 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                     if (os_str.compareTo("Windows 10") == 0) {
                         cmdFile = "cmd.exe /c klb2tif.bat \"" + destFolder + File.separator + destNameRaw + "\"";
                     } else {
-                        cmdFile = "./klb2tif.sh \"" + destFolder + File.separator + destNameRaw + "\"";
+                        cmdFile = destFolder + File.separator + destNameRaw;
+                        cmdFile = cmdFile.replace(" ", "\\ ");
+                        cmdFile = "./klb2tif.sh " + cmdFile;
                     }
 
                     Process process;
@@ -3106,7 +3139,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             fileListCount = 0;
             //String[] curFileList;
 
-            // update file list array
+            // update file list array for the awwor switch buttons
             curFileList = new ArrayList<String>();
             IJ.log("Found " + String.valueOf(fileListCount) + " images in current folder");
             fileListCount = 0;
@@ -3145,6 +3178,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 }
             }
 
+            // Load the next label id to be assigned. 
             try {
                 String loadedROIfolder = destFolder + File.separator + "stardist_rois";
                 File dir = new File(loadedROIfolder);
@@ -3158,10 +3192,13 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                             while (zipEntries.hasMoreElements()) {
                                 String fname = ((ZipEntry) zipEntries.nextElement()).getName();
                                 String labelIdxStr = fname.split("[.]")[0].split("_")[1];
-                                int labelIdx = (int) Float.valueOf(labelIdxStr).floatValue();
-                                if (labelIdx > maxROILabel) {
-                                    maxROILabel = labelIdx;
+                                try {  
+                                    int labelIdx = Integer.valueOf(labelIdxStr);
+                                    if (labelIdx > maxROILabel) {
+                                        maxROILabel = labelIdx;
+                                    }
                                 }
+                                catch(NumberFormatException e){ }
                             }
                             zipFile.close();
                         }
@@ -3479,7 +3516,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         // reset vars
         inAssisting = false;
         acObjects = null;
-        buttonOptions.setEnabled(true);
 
         startedEditing = false;
         origEditedROI = null;
@@ -3513,6 +3549,13 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
         // when open function finishes:
         started = true;
+        
+        // Load ROIs of the first slice.
+        String loadedROIfolder = destFolder + File.separator + "stardist_rois";
+        currentSliceIdx = 1;
+        String loadedROIname = destNameRaw.substring(0, destNameRaw.lastIndexOf('.')) + ".label_" + String.valueOf(currentSliceIdx) + ".zip";
+        loadROIs(loadedROIfolder, loadedROIname);
+
     }
 
     public void closeWindowsAndSave() {
@@ -4767,7 +4810,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         int curROInum = manager.getCount();
         File tempFile = new File(loadedROIfolder + File.separator + loadedROIname);
         if (tempFile.exists()) {
-            
             try{
                 ZipFile zipFile = new ZipFile(loadedROIfolder + File.separator + loadedROIname);
                 Enumeration zipEntries = zipFile.entries();
@@ -4786,7 +4828,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                     loadedROI = true;
                     curROInum = manager.getCount();
                     IJ.log("After loading we have " + String.valueOf(curROInum) + " contours");
-
+                    manager.repaint();
                 }
                 zipFile.close();
             } catch (IOException e) {
@@ -7769,15 +7811,14 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                         imp = WindowManager.getCurrentImage();
                     }
                     curROI = imp.getRoi();
-                    if (curROI == null) {
-                        IJ.log("Empty ROI");
+                    
+                    if (curROI == null || curROI.size() < 20) {
+                        IJ.log("Empty ROI or too small!");
                     } else {
                         // add the ROI to the list:
-                        
                         int sliceIdx = imp.getCurrentSlice();
                         String curROIname = String.valueOf(sliceIdx) + "_" + String.valueOf(nextROILabel);
                         curROI.setName(curROIname);
-
                         if (saveAnnotTimes) {
                             // measure time
                             long curTime = (System.nanoTime() - lastStartTime) / (long) 1000000; //ms time
@@ -7786,11 +7827,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                             annotTimes.setValue("time", annotCount, curTime);
                             annotCount += 1;
                         }
-
-                        //imp.setRoi(curROI);	
                         // this was working before:
                         manager.runCommand("Add");
-
                         // check if it was successful
                         int curROIcount = manager.getCount();
                         IJ.log("Added ROI (" + curROIcount + ".)");
@@ -8353,10 +8391,10 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
                 nextImage(this);
             } // OPTIONS ------------------------------------
-            else if (command.equals("...")) {
-                // open annotation options dialog
-
-                openOptionsFrame();
+            else if (command.equals("Gen. Mask")) {
+                // generate the Mask from ROIs
+                
+                genMask(this);
             } // EXPORT -------------------------------------
             else if (command.equals("[^]")) {
                 // open export plugin
