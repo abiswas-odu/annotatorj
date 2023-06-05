@@ -325,7 +325,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         instance = this;
         addKeyListener(IJ.getInstance());
 
-        instance.setTitle("AnnotatorJ 1.4");
+        instance.setTitle("AnnotatorJ 1.5");
 
         // create panel for every component
         setLayout(new FlowLayout());
@@ -2982,7 +2982,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         try {
             String cmdFile = "";
             String os_str = System.getProperty("os.name");
-            if (os_str.compareTo("Windows 10") == 0) {
+            if (os_str.compareTo("Windows 10") == 0 || os_str.compareTo("Windows 11") == 0) {
                 cmdFile = "cmd.exe /c gen_mask.bat \"" + destFolder + File.separator + destNameRaw + "\"";
             } else {
                 cmdFile = destFolder + File.separator + destNameRaw;
@@ -3097,7 +3097,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 try {
                     String cmdFile = "";
                     String os_str = System.getProperty("os.name");
-                    if (os_str.compareTo("Windows 10") == 0) {
+                    if (os_str.compareTo("Windows 10") == 0 || os_str.compareTo("Windows 11") == 0) {
                         cmdFile = "cmd.exe /c klb2tif.bat \"" + destFolder + File.separator + destNameRaw + "\"";
                     } else {
                         cmdFile = destFolder + File.separator + destNameRaw;

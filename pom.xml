@@ -15,7 +15,7 @@
   <!-- ANNOTATORJ -->
   <groupId>org.biomag</groupId>
   <artifactId>annotator_Project</artifactId>
-  <version>1.4.0</version>
+  <version>1.5</version>
   <packaging>jar</packaging>
   
   <name>annotator_Project</name>
