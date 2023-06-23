@@ -124,6 +124,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
     private Overlay overlaySemantic;
     private String selectedClass;
     private Window imWindow;
+    private ArrayList<ArrayList<Integer>> listOfColors;
 
     //private FloatPolygon curROI;
     private Roi curROI;
@@ -325,7 +326,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         instance = this;
         addKeyListener(IJ.getInstance());
 
-        instance.setTitle("AnnotatorJ 1.5");
+        instance.setTitle("AnnotatorJ 1.6.1");
 
         // create panel for every component
         setLayout(new FlowLayout());
@@ -987,9 +988,11 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         initializedRoisFromArgs = false;
         isProcessingWheelEvent = false;
         wheelStepCounter = 1;
-
         closeingOnPurpuse = false;
-
+        
+        //Create list of colors
+        fillColorList();
+        
         // annot time log vars
         annotCount = 0;
         lastStartTime = System.nanoTime();
@@ -1002,7 +1005,264 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         // for autosave
         startTime = System.currentTimeMillis();
     }
-
+    //create a distinct list of colors
+    public void fillColorList(){
+        listOfColors = new ArrayList<ArrayList<Integer>>();
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 0, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 0, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 255, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 26, 184)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 211, 0))); 
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 131, 246)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 140, 70)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(167, 96, 61)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(79, 0, 105)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 255, 246)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(61, 123, 140)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(237, 167, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(211, 255, 149)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(184, 79, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(228, 26, 87)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(131, 131, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 255, 149)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(96, 0, 43)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(246, 131, 17)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(202, 255, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(43, 61, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 52, 193)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 202, 131)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 43, 96)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(158, 114, 140)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(79, 184, 17)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(158, 193, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(149, 158, 123)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 123, 175)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(158, 8, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 184, 184)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(131, 96, 202)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(158, 0, 114)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(131, 219, 167)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 0, 246)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 114, 87)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(87, 61, 52)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 61, 52)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(219, 96, 219)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(96, 114, 175)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(184, 202, 43)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(17, 175, 167)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(96, 17, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(43, 0, 43)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(87, 0, 202)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(149, 193, 202)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(211, 158, 35)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(131, 175, 87)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(228, 237, 184)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(246, 211, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(184, 79, 96)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(140, 8, 167)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(105, 79, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 61, 158)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(123, 61, 123)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(61, 123, 96)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(167, 255, 96)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 149, 211)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(61, 114, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(175, 87, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(219, 0, 123)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(158, 158, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(79, 70, 96)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(167, 255, 246)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(228, 0, 43)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(114, 219, 114)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 237, 123)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(175, 140, 70)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(96, 114, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(219, 70, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 0, 114)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(8, 0, 70)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(52, 237, 79)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(43, 0, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(167, 0, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 246, 193)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(158, 0, 43)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 61, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(246, 158, 123)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(105, 114, 52)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 255, 70)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(193, 175, 175)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(114, 114, 114)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(193, 105, 167)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 87, 35)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 131, 140)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(175, 131, 114)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 70, 96)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(140, 255, 17)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(175, 140, 202)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(114, 79, 246)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(114, 158, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(211, 8, 193)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(158, 0, 79)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(193, 123, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(140, 149, 184)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(246, 167, 211)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(35, 35, 8)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 105, 202)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 140, 17)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 167, 87)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(228, 193, 158)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 17, 43)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(193, 184, 87)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 193, 123)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(70, 43, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(123, 61, 87)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(158, 70, 167)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(79, 87, 61)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(105, 52, 184)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(114, 175, 149)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 175, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(79, 52, 131)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(184, 70, 52)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(96, 167, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(211, 131, 149)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(123, 96, 61)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(105, 0, 79)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(237, 87, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(149, 211, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(52, 167, 193)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 0, 158)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(123, 52, 52)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(219, 255, 105)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(149, 211, 79)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(131, 255, 175)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(131, 52, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(79, 219, 228)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(70, 35, 52)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 43, 8)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(184, 219, 193)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(87, 140, 79)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(158, 114, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(202, 70, 131)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 193, 70)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(202, 8, 237)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(202, 219, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 87, 167)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(43, 167, 123)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(140, 219, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(35, 43, 52)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(193, 255, 184)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 105, 158)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 87, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(246, 87, 131)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(219, 123, 70)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(202, 52, 167)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(167, 202, 140)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(79, 219, 193)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(96, 114, 211)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(105, 35, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(140, 8, 202)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(219, 193, 43)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(193, 184, 123)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(61, 35, 87)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(123, 96, 149)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(184, 123, 219)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 219, 211)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(237, 87, 96)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(202, 184, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(61, 87, 87)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(114, 149, 149)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(123, 255, 123)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(149, 52, 105)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(202, 158, 184)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(114, 61, 26)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(149, 8, 140)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(246, 140, 219)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(96, 175, 61)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 202, 96)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(211, 123, 114)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 237, 158)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(202, 246, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(87, 193, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(140, 96, 237)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(96, 184, 114)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(140, 96, 96)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(70, 70, 123)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 87, 211)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(87, 219, 8)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 26, 114)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(211, 61, 43)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(149, 149, 70)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(202, 123, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(79, 105, 140)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(149, 131, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(70, 35, 140)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 131, 131)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(246, 114, 52)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(158, 219, 131)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(202, 219, 105)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(175, 79, 219)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(79, 8, 17)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 26, 123)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(123, 175, 211)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(26, 0, 26)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(140, 52, 246)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(87, 0, 167)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(237, 140, 255)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 79, 219)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 0, 79)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(211, 158, 114)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(79, 70, 184)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 87, 167)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(140, 114, 193)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 0, 211)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 79, 52)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 123, 79)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(175, 158, 17)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(61, 96, 26)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 123, 202)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(202, 17, 52)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(193, 0, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(140, 35, 61)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(114, 35, 149)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(131, 211, 202)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(202, 228, 17)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(131, 255, 211)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 87, 61)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(149, 87, 17)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(96, 96, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(193, 184, 211)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(202, 35, 96)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(43, 43, 211)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(193, 193, 167)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(123, 0, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(52, 0, 70)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(17, 17, 61)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(123, 114, 140)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(149, 167, 52)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(184, 96, 131)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 105, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(87, 79, 26)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(87, 35, 79)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(175, 255, 131)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(202, 211, 211)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(52, 26, 8)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(140, 149, 219)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(140, 52, 35)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(105, 131, 43)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(167, 140, 96)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(114, 26, 114)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(228, 114, 96)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(43, 175, 79)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(219, 211, 0)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(8, 96, 96)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 96, 8)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(105, 123, 87)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(43, 43, 79)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(158, 96, 167)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(211, 255, 211)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(43, 219, 123)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 0, 211)));
+        listOfColors.add(new ArrayList<Integer>(Arrays.asList(219, 158, 87)));
+    }
     // sets the annotation and overlay colours according to config vars
     public void setSelectedColours() {
         switch (defAnnotCol) {
@@ -1087,9 +1347,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
             case "blue":
                 outColour = Color.blue;
                 break;
-            case "cyan":
-                outColour = Color.cyan;
-                break;
             case "green":
                 outColour = Color.green;
                 break;
@@ -1104,6 +1361,12 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                 break;
             case "white":
                 outColour = Color.white;
+                break;
+            case "pink":
+                outColour = Color.pink;
+                break;
+            case "gray":
+                outColour = Color.gray;
                 break;
             default:
                 outColour = Color.yellow;
@@ -4828,6 +5091,25 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
                     loadedROI = true;
                     curROInum = manager.getCount();
                     IJ.log("After loading we have " + String.valueOf(curROInum) + " contours");
+                    // Color the ROIs
+                    
+                    for (int r = 0; r < curROInum; r++) {
+                        Roi tmpROI = manager.getRoi(r);
+                        String labelIdxStr = tmpROI.getName();
+                        if(labelIdxStr.indexOf(".") != -1)
+                            labelIdxStr = labelIdxStr.split("[.]")[0];
+                        if(labelIdxStr.indexOf("_") != -1)
+                            labelIdxStr = labelIdxStr.split("_", 0)[1];
+                        try{
+                            int labelIdx = Integer.valueOf(labelIdxStr);
+                            int colIdx = labelIdx % listOfColors.size();
+                            float[] hsbvals = new float[3];
+                            Color.RGBtoHSB(listOfColors.get(colIdx).get(0), listOfColors.get(colIdx).get(1), listOfColors.get(colIdx).get(2), hsbvals);
+                            tmpROI.setStrokeColor(Color.getHSBColor(hsbvals[0], hsbvals[1], hsbvals[2]));
+                            // tmpROI.setStrokeColor(string2colour(namedColors.get(colIdx)));
+                        }
+                        catch(NumberFormatException e){ }
+                    }
                     manager.repaint();
                 }
                 zipFile.close();
