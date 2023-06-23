@@ -326,7 +326,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         instance = this;
         addKeyListener(IJ.getInstance());
 
-        instance.setTitle("AnnotatorJ 1.6.1");
+        instance.setTitle("AnnotatorJ 1.6.2");
 
         // create panel for every component
         setLayout(new FlowLayout());
@@ -1017,7 +1017,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 140, 70)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(167, 96, 61)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(79, 0, 105)));
-        listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 255, 246)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(61, 123, 140)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(237, 167, 255)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(211, 255, 149)));
@@ -1074,7 +1073,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(167, 255, 246)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(228, 0, 43)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(114, 219, 114)));
-        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 237, 123)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(175, 140, 70)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(96, 114, 255)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(219, 70, 0)));
@@ -1088,7 +1086,6 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(0, 61, 255)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(246, 158, 123)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(105, 114, 52)));
-        listOfColors.add(new ArrayList<Integer>(Arrays.asList(255, 255, 70)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(193, 175, 175)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(114, 114, 114)));
         listOfColors.add(new ArrayList<Integer>(Arrays.asList(193, 105, 167)));
